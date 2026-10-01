@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Prevent any unintentional horizontal scroll */
+  html, body {
+    overflow-x: hidden;
+    background-color: #FAF8F5;
+    color: #1C1917;
+  }
+
+  /* Rule 0.2: Motion is limited to simple state feedback of 150ms or less,
+     and everything must stop when prefers-reduced-motion: reduce is set. */
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Rule 8: High contrast visible focus indicators, never removed */
+  :focus-visible {
+    outline: 2px solid #4A3525;
+    outline-offset: 2px;
+  }
+
+  /* Rule 0.2: Max 6px border radius on buttons, inputs and cards */
+  button, input, textarea, select {
+    border-radius: 6px;
+  }
+}
+
+@layer utilities {
+  /* Screen reader only utility */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* Minimum 44x44px touch target area utility */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
