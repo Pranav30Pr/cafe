@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" fill="none">
+  <!-- Clean geometric cafe mark: coffee cup & saucer, neutral tones, zero gradients -->
+  <rect width="32" height="32" rx="4" fill="#4A3525"/>
+  <!-- Saucer -->
+  <path d="M7 23h18c0 1.1-.9 2-2 2H9c-1.1 0-2-.9-2-2z" fill="#FAF8F5"/>
+  <!-- Cup body -->
+  <path d="M9 13h12v5a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5v-5z" fill="#FAF8F5"/>
+  <!-- Handle -->
+  <path d="M21 14h2a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-2v-2h2v-1h-2v-2z" fill="#FAF8F5"/>
+  <!-- Steam (simple geometric lines) -->
+  <path d="M12 8c0 1.5.8 2 1.2 2.5M16 7c0 1.5.8 2 1.2 2.5" stroke="#FAF8F5" stroke-width="1.2" stroke-linecap="round"/>
+</svg>

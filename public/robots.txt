@@ -1,0 +1,7 @@
+# robots.txt
+User-agent: *
+Disallow: /t/
+Disallow: /kitchen
+Disallow: /admin
+
+Sitemap: https://[[CLIENT_TO_PROVIDE: domain]]/sitemap.xml
