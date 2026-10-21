@@ -1,0 +1,57 @@
+/* Glass morphism utility classes complying with UI_SPEC.md Section 6.2 */
+
+.glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.glass-strong {
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* Fallback when backdrop-filter is not supported */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .glass-strong {
+    background: var(--bg-tint-light);
+  }
+}
+
+/* Fallback for prefers-reduced-transparency */
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-strong {
+    background: var(--bg-tint-light);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Static single-hue tonal backdrop layer per UI_SPEC Section 6.1 */
+.app-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: var(--bg-base);
+  background-image: 
+    radial-gradient(circle at 25% 20%, var(--bg-tint-light) 0%, transparent 55%),
+    radial-gradient(circle at 80% 80%, var(--bg-tint-dark) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* Tabular nums for prices per Section 6.5 */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Touch action tap highlight removal per Section 7 */
+* {
+  -webkit-tap-highlight-color: transparent;
+}

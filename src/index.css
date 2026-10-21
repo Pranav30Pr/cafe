@@ -1,17 +1,20 @@
+@import './styles/tokens.css';
+@import './styles/glass.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  /* Prevent any unintentional horizontal scroll */
   html, body {
     overflow-x: hidden;
-    background-color: #FAF8F5;
-    color: #1C1917;
+    background-color: var(--bg-base);
+    color: var(--ink);
+    min-height: 100vh;
+    min-height: 100dvh;
   }
 
-  /* Rule 0.2: Motion is limited to simple state feedback of 150ms or less,
-     and everything must stop when prefers-reduced-motion: reduce is set. */
+  /* Motion rules per UI_SPEC Section 6.8 & PROJECT_SPEC Section 0.2 */
   @media (prefers-reduced-motion: reduce) {
     *, ::before, ::after {
       animation-duration: 0.01ms !important;
@@ -21,20 +24,19 @@
     }
   }
 
-  /* Rule 8: High contrast visible focus indicators, never removed */
+  /* Accessible focus indicators */
   :focus-visible {
-    outline: 2px solid #4A3525;
+    outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
 
-  /* Rule 0.2: Max 6px border radius on buttons, inputs and cards */
-  button, input, textarea, select {
-    border-radius: 6px;
+  /* Ensure inputs have at least 16px font-size to prevent iOS auto-zoom (UI_SPEC 6.5) */
+  input, textarea, select {
+    font-size: 16px;
   }
 }
 
 @layer utilities {
-  /* Screen reader only utility */
   .sr-only {
     position: absolute;
     width: 1px;
@@ -47,7 +49,6 @@
     border-width: 0;
   }
 
-  /* Minimum 44x44px touch target area utility */
   .touch-target {
     min-height: 44px;
     min-width: 44px;
