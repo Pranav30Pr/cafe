@@ -24,6 +24,7 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Meeva Greens",
   },
+  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {

@@ -1,0 +1,24 @@
+{
+  "name": "Meeva Greens | Botanical Cafe & Specialty Coffee",
+  "short_name": "Meeva Greens",
+  "description": "An artisanal botanical cafe and specialty coffee house in Pimpri-Chinchwad, Pune. Nourish. Brew. Gather.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FBF9F4",
+  "theme_color": "#1B382B",
+  "icons": [
+    {
+      "src": "/images/coffee.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/interior.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
