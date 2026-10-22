@@ -1,3 +1,9 @@
+import Link from "next/link";
+import { CAFE_CONFIG } from "@/config/cafe";
+import { CartProvider } from "@/context/CartContext";
+import { CustomerAppView } from "@/components/customer/CustomerAppView";
+import { AlertCircle, ArrowLeft } from "lucide-react";
+
 export const dynamic = "force-dynamic";
 
 interface PageProps {
@@ -9,31 +15,48 @@ interface PageProps {
 export default async function TableOrderPage({ params }: PageProps) {
   const { tableToken } = await params;
 
-  return (
-    <div className="min-h-screen bg-[#FBF9F4] p-4 flex flex-col justify-between">
-      <header className="p-4 bg-white rounded-2xl border border-[#E6E1D5] shadow-sm">
-        <span className="text-xs uppercase tracking-wider text-[#4E7A63] font-semibold">
-          Dine-In Session
-        </span>
-        <h1 className="text-xl font-serif text-[#1B382B] mt-1">
-          Meeva Greens QR Order
-        </h1>
-        <p className="text-xs text-[#55635B] mt-0.5">
-          Active Token: <code className="bg-[#F3EFE6] px-1.5 py-0.5 rounded font-mono text-[11px]">{tableToken}</code>
-        </p>
-      </header>
+  // Resolve matching table
+  const matchedTable = CAFE_CONFIG.tables.find((t) => t.qrToken === tableToken);
 
-      <main className="py-12 text-center text-[#55635B]">
-        <div className="w-12 h-12 rounded-full bg-[#F3EFE6] border border-[#E6E1D5] flex items-center justify-center mx-auto mb-3 text-[#1B382B] text-lg font-bold">
-          ☕
+  if (!matchedTable) {
+    return (
+      <div className="min-h-screen bg-[#FBF9F4] p-6 flex flex-col items-center justify-center text-center">
+        <div className="w-14 h-14 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-4">
+          <AlertCircle className="w-7 h-7" />
         </div>
-        <p className="text-sm font-medium text-[#151E19]">Customer App Shell Scaffold</p>
-        <p className="text-xs mt-1">Ready for Phase 2: Menu catalog, category tabs, and bottom cart drawer.</p>
-      </main>
+        <h1 className="font-serif text-2xl font-bold text-[#1B382B]">
+          Unrecognized Table Token
+        </h1>
+        <p className="text-xs sm:text-sm text-[#55635B] max-w-sm mt-2 leading-relaxed">
+          The table QR code scanned does not match an active table session at Meeva Greens.
+        </p>
 
-      <footer className="p-4 bg-white rounded-2xl border border-[#E6E1D5] text-center text-xs text-[#55635B] pb-safe">
-        Single session per table • Pay at counter
-      </footer>
-    </div>
+        <div className="mt-8 space-y-3 w-full max-w-xs">
+          <Link
+            href="/order/token-mg-t01-dinein"
+            className="w-full py-3 px-4 rounded-2xl bg-[#1B382B] text-white text-xs font-semibold block hover:bg-[#12241C] transition-colors"
+          >
+            Open Demo Table 1 Menu
+          </Link>
+
+          <Link
+            href="/"
+            className="w-full py-3 px-4 rounded-2xl border border-[#E6E1D5] bg-white text-[#151E19] text-xs font-semibold block hover:bg-[#F3EFE6] transition-colors"
+          >
+            Return to Cafe Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <CartProvider>
+      <CustomerAppView
+        orderType="dine_in"
+        tableToken={tableToken}
+        tableLabel={matchedTable.label}
+      />
+    </CartProvider>
   );
 }
