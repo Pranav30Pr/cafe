@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --color-forest: #1B382B;
+  --color-forest-dark: #12241C;
+  --color-sage: #4E7A63;
+  --color-sage-light: #8EBA9D;
+  --color-terracotta: #C4623F;
+  --color-terracotta-dark: #A84E2E;
+  --color-amber-gold: #D99B52;
+
+  --color-canvas: #FBF9F4;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F3EFE6;
+  --color-text-main: #151E19;
+  --color-text-muted: #55635B;
+  --color-border-subtle: #E6E1D5;
+
+  --color-veg: #2D8A4E;
+  --color-nonveg: #C44A3F;
+  --color-urgent: #E0533C;
+
+  --font-serif-display: "Playfair Display", Georgia, serif;
+  --font-sans-body: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  --background: #FBF9F4;
+  --foreground: #151E19;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Safe area padding utilities for native-feeling mobile app shell */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 16px);
+}
