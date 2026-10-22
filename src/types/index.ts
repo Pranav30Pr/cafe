@@ -170,4 +170,31 @@ export interface CreateOrderPayload {
   note?: string;
   marketing_consent: boolean;
   consent_version?: string;
+  redeem_reward_id?: string;
 }
+
+// Phase 4: Loyalty Points & Rewards
+export interface LoyaltyReward {
+  id: string;
+  title: string;
+  points_cost: number;
+  discount_paise: number;
+  badge: string;
+  description: string;
+}
+
+// Phase 4: WhatsApp Campaigns (Meta Business Platform template style)
+export type CampaignTargetAudience = 'all_consented' | 'high_loyalty' | 'athletes';
+
+export interface WhatsAppCampaign {
+  id: string;
+  cafe_id: string;
+  title: string;
+  target_audience: CampaignTargetAudience;
+  template_name: string;
+  message_text: string;
+  recipient_count: number;
+  status: 'sent' | 'scheduled';
+  sent_at: string;
+}
+

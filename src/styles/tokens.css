@@ -1,47 +1,41 @@
 :root {
-  /* Brand colour tokens per UI_SPEC.md Section 6.2 */
-  /* [[CLIENT_TO_PROVIDE: brand colours]] */
-  --bg-base: #E9DFD3;
-  --bg-tint-light: #F4ECE2;
-  --bg-tint-dark: #D8C7B4;
+  /* Fresh Modern Healthy Cafe Theme (Swiggy & Zomato Reference) */
+  --bg-base: #F8FAF8;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #F1F5F2;
+  --bg-tint-light: #F4F8F5;
+  --bg-tint-dark: #E6EFE9;
 
-  --ink: #1F1712;
-  --ink-muted: #5A4C42;
-  --accent: #5A3A29;
+  --ink: #0F172A;
+  --ink-muted: #64748B;
+  --ink-subtle: #94A3B8;
+
+  --accent: #15803D;
+  --accent-mint: #16A34A;
   --accent-ink: #FFFFFF;
-  --danger: #A32619;
-  --success: #1E6B3A;
-  --warning: #854D0E;
+  --accent-subtle: rgba(21, 128, 61, 0.10);
 
-  --glass: rgba(255, 255, 255, 0.58);
-  --glass-strong: rgba(255, 255, 255, 0.80);
-  --glass-border: rgba(255, 255, 255, 0.60);
-  --glass-shadow: 0 8px 28px rgba(40, 25, 15, 0.12);
-  --glass-blur: blur(18px) saturate(140%);
+  --danger: #DC2626;
+  --success: #15803D;
+  --warning: #D97706;
 
-  --radius-card: 16px;
-  --radius-sheet: 24px;
-  --radius-btn: 14px;
-  --radius-input: 12px;
-  --radius-chip: 12px;
+  --glass: rgba(255, 255, 255, 0.92);
+  --glass-strong: #FFFFFF;
+  --glass-border: #E2E8F0;
+  --glass-border-subtle: #F1F5F9;
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  --glass-blur: blur(12px);
+
+  --radius-card: 6px;
+  --radius-sheet: 16px;
+  --radius-btn: 6px;
+  --radius-input: 6px;
+  --radius-chip: 6px;
 
   --space: 4px;
   --page-pad: 16px;
   --tabbar-h: 64px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg-base: #1A130E;
-    --bg-tint-light: #2A1F17;
-    --bg-tint-dark: #120D09;
-    --ink: #F6EFE8;
-    --ink-muted: #CDBFB2;
-    --accent: #E2B78F;
-    --accent-ink: #1A130E;
-    --glass: rgba(40, 30, 24, 0.55);
-    --glass-strong: rgba(34, 25, 20, 0.80);
-    --glass-border: rgba(255, 255, 255, 0.14);
-    --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
-  }
-}
+
+

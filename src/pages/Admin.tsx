@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { api, SalesSummary } from '../services/api';
-import { StaffProfile, MenuItem, CafeTable, Customer, PrivacyRequest } from '../types';
+import {
+  StaffProfile,
+  MenuItem,
+  CafeTable,
+  Customer,
+  PrivacyRequest,
+  LoyaltyReward,
+  WhatsAppCampaign,
+  CampaignTargetAudience,
+} from '../types';
 import { formatRupees } from '../utils/formatters';
 import { generateQrPngDataUrl, generateQrSvgString } from '../utils/qr';
 import { Icons } from '../components/SvgIcon';
@@ -8,7 +17,7 @@ import { StaffLoginModal } from '../components/StaffLoginModal';
 
 export const Admin: React.FC = () => {
   const [profile, setProfile] = useState<StaffProfile | null>(api.getCurrentStaff());
-  const [activeTab, setActiveTab] = useState<'menu' | 'tables' | 'sales' | 'customers' | 'privacy'>('menu');
+  const [activeTab, setActiveTab] = useState<'menu' | 'tables' | 'sales' | 'customers' | 'privacy' | 'campaigns'>('menu');
 
   // Tab 1: Menu Items
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -28,27 +37,39 @@ export const Admin: React.FC = () => {
   // Tab 5: Privacy Requests
   const [privacyRequests, setPrivacyRequests] = useState<PrivacyRequest[]>([]);
 
+  // Tab 6: Phase 4 WhatsApp & Loyalty Campaigns
+  const [campaigns, setCampaigns] = useState<WhatsAppCampaign[]>([]);
+  const [rewards, setRewards] = useState<LoyaltyReward[]>([]);
+  const [campaignAudience, setCampaignAudience] = useState<CampaignTargetAudience>('all_consented');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('post_workout');
+  const [customMsg, setCustomMsg] = useState<string>('');
+  const [campaignSuccess, setCampaignSuccess] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    document.title = 'Owner Admin | Artisan Roast Cafe';
+    document.title = 'Owner Admin | Verde Fuel Cafe';
   }, []);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [allMenu, allTables, salesSummary, consentedCusts, reqs] = await Promise.all([
+      const [allMenu, allTables, salesSummary, consentedCusts, reqs, allCampaigns, allRewards] = await Promise.all([
         api.getAllMenuItems(),
         api.getTables(),
         api.getSalesSummary(),
         api.getConsentedCustomers(),
         api.getPrivacyRequests(),
+        api.getWhatsAppCampaigns(),
+        api.getLoyaltyRewards(),
       ]);
       setMenuItems(allMenu.items);
       setTables(allTables);
       setSales(salesSummary);
       setCustomers(consentedCusts);
       setPrivacyRequests(reqs);
+      setCampaigns(allCampaigns);
+      setRewards(allRewards);
     } catch (e) {
       console.error(e);
     } finally {
@@ -211,6 +232,7 @@ export const Admin: React.FC = () => {
           { id: 'sales', label: 'Sales Summary' },
           { id: 'customers', label: `Consented Customers (${customers.length})` },
           { id: 'privacy', label: `Privacy Requests (${privacyRequests.filter((r) => r.status === 'pending').length} Pending)` },
+          { id: 'campaigns', label: 'WhatsApp & Loyalty (Phase 4)' },
         ].map((tab) => {
           const active = activeTab === tab.id;
           return (
@@ -654,6 +676,310 @@ export const Admin: React.FC = () => {
               ))}
             </div>
           )}
+        </section>
+      )}
+
+      {/* TAB 6: WHATSAPP CAMPAIGNS & LOYALTY (PHASE 4) */}
+      {activeTab === 'campaigns' && (
+        <section aria-labelledby="heading-campaigns" className="space-y-6">
+          {/* Top Banner: Loyalty & WhatsApp Overview */}
+          <div className="border border-cafe-border bg-cafe-surface p-6 rounded space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 id="heading-campaigns" className="text-lg font-semibold text-cafe-text">
+                  WhatsApp Campaigns & Athlete Loyalty (Phase 4)
+                </h2>
+                <p className="text-xs text-cafe-textMuted mt-0.5">
+                  Engage gym members, athletes, and health-conscious patrons via Meta-approved WhatsApp templates and manage Green Fuel loyalty points.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-3 py-1 rounded bg-cafe-muted text-cafe-accent text-xs font-bold border border-cafe-border">
+                  DPDP Compliant (Opt-in Only)
+                </span>
+              </div>
+            </div>
+
+            {/* Loyalty Metrics Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <div className="p-4 bg-cafe-muted/50 border border-cafe-border rounded space-y-1">
+                <span className="text-[11px] font-semibold text-cafe-textMuted uppercase tracking-wider block">
+                  Total Points Circulating
+                </span>
+                <span className="text-2xl font-bold text-cafe-accent">
+                  {customers.reduce((sum, c) => sum + (c.loyalty_points || 0), 0)} pts
+                </span>
+                <p className="text-[10px] text-cafe-textMuted">
+                  Earned across {customers.length} consented customers
+                </p>
+              </div>
+
+              <div className="p-4 bg-cafe-muted/50 border border-cafe-border rounded space-y-1">
+                <span className="text-[11px] font-semibold text-cafe-textMuted uppercase tracking-wider block">
+                  Active Athletes with Points
+                </span>
+                <span className="text-2xl font-bold text-cafe-accent">
+                  {customers.filter((c) => (c.loyalty_points || 0) > 0).length} members
+                </span>
+                <p className="text-[10px] text-cafe-textMuted">
+                  Eligible for healthy snack and smoothie rewards
+                </p>
+              </div>
+
+              <div className="p-4 bg-cafe-muted/50 border border-cafe-border rounded space-y-1">
+                <span className="text-[11px] font-semibold text-cafe-textMuted uppercase tracking-wider block">
+                  Consented Audience Reach
+                </span>
+                <span className="text-2xl font-bold text-cafe-accent">
+                  {customers.length} opt-ins
+                </span>
+                <p className="text-[10px] text-cafe-textMuted">
+                  Zero unsolicited spam. 100% verified marketing consent
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Active Rewards Catalog */}
+          <div className="border border-cafe-border bg-cafe-surface p-6 rounded space-y-4">
+            <h3 className="text-sm font-bold text-cafe-text">
+              Active Loyalty Reward Catalogue (Healthy Snacks & Fuel)
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {rewards.map((reward) => (
+                <div
+                  key={reward.id}
+                  className="p-3.5 border border-cafe-border rounded bg-cafe-muted/30 space-y-2 flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="text-xs font-bold text-cafe-accent">
+                        {reward.title}
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-cafe-accent text-white text-[10px] font-bold">
+                        {reward.points_cost} pts
+                      </span>
+                    </div>
+                    <p className="text-xs text-cafe-textMuted">
+                      {reward.description}
+                    </p>
+                  </div>
+                  <div className="text-[11px] font-semibold text-cafe-accent pt-2 border-t border-cafe-border/50">
+                    Value: {formatRupees(reward.discount_paise)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* WhatsApp Campaign Composer */}
+          <div className="border border-cafe-border bg-cafe-surface p-6 rounded space-y-5">
+            <div>
+              <h3 className="text-sm font-bold text-cafe-text">
+                Create WhatsApp Broadcast Campaign
+              </h3>
+              <p className="text-xs text-cafe-textMuted">
+                Broadcast Meta-compliant nutrition and snack offers directly to consented customers.
+              </p>
+            </div>
+
+            {campaignSuccess && (
+              <div
+                role="status"
+                className="p-3 bg-cafe-successBg border border-cafe-success text-cafe-success text-xs font-semibold rounded"
+              >
+                {campaignSuccess}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Form Controls */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-cafe-text mb-1">
+                    Campaign Target Audience
+                  </label>
+                  <select
+                    value={campaignAudience}
+                    onChange={(e) => setCampaignAudience(e.target.value as CampaignTargetAudience)}
+                    className="w-full h-10 px-3 border border-cafe-border rounded bg-cafe-surface text-xs text-cafe-text focus-visible:outline-none"
+                  >
+                    <option value="all_consented">
+                      All Consented Customers ({customers.length} recipients)
+                    </option>
+                    <option value="athletes">
+                      Active Athletes (20+ Points) ({customers.filter((c) => (c.loyalty_points || 0) >= 20).length} recipients)
+                    </option>
+                    <option value="high_loyalty">
+                      VIP High Earners (50+ Points) ({customers.filter((c) => (c.loyalty_points || 0) >= 50).length} recipients)
+                    </option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-cafe-text mb-1">
+                    Pre-Approved Healthy Cafe Template
+                  </label>
+                  <select
+                    value={selectedTemplate}
+                    onChange={(e) => {
+                      const t = e.target.value;
+                      setSelectedTemplate(t);
+                      if (t === 'post_workout') {
+                        setCustomMsg('Hey athlete! Finished your workout? Show this WhatsApp message at Verde Fuel counter today for a free Protein Energy Snack with any order. Reply STOP to opt out.');
+                      } else if (t === 'weekend_loyalty') {
+                        setCustomMsg('Green Fuel VIP: Earn DOUBLE Green Points this weekend on all healthy snacks and protein bowls. Level up your gains faster! Reply STOP to opt out.');
+                      } else if (t === 'snack_box') {
+                        setCustomMsg('Fuel your active lifestyle! Grab our Healthy Athlete Snack Box (Macro-balanced: 28g protein) at 20% off this week. Reply STOP to opt out.');
+                      } else {
+                        setCustomMsg('Beat the heat & smash your PRs! Get a fresh Cold-Pressed Electrolyte Drink on the house with 50+ loyalty points. Reply STOP to opt out.');
+                      }
+                    }}
+                    className="w-full h-10 px-3 border border-cafe-border rounded bg-cafe-surface text-xs text-cafe-text focus-visible:outline-none"
+                  >
+                    <option value="post_workout">Post-Workout Protein Snack Fuel</option>
+                    <option value="weekend_loyalty">Weekend 2x Points for Healthy Snacks</option>
+                    <option value="snack_box">Athlete Macro-Balanced Snack Box Special</option>
+                    <option value="hydration_boost">Pre-Workout Cold Pressed Hydration Alert</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-cafe-text mb-1">
+                    Message Copy (Includes Mandatory DPDP Opt-Out)
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={
+                      customMsg ||
+                      'Hey athlete! Finished your workout? Show this WhatsApp message at Verde Fuel counter today for a free Protein Energy Snack with any order. Reply STOP to opt out.'
+                    }
+                    onChange={(e) => setCustomMsg(e.target.value)}
+                    className="w-full p-3 border border-cafe-border rounded bg-cafe-surface text-xs text-cafe-text focus-visible:outline-none font-sans"
+                  />
+                  <p className="text-[10px] text-cafe-textMuted mt-1">
+                    Section 11 Phase 4: Every message must include an opt-out method ("Reply STOP to opt out").
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const audienceCount =
+                        campaignAudience === 'all_consented'
+                          ? customers.length
+                          : campaignAudience === 'athletes'
+                          ? customers.filter((c) => (c.loyalty_points || 0) >= 20).length
+                          : customers.filter((c) => (c.loyalty_points || 0) >= 50).length;
+
+                      const title =
+                        selectedTemplate === 'post_workout'
+                          ? 'Post-Workout Protein Snack Fuel'
+                          : selectedTemplate === 'weekend_loyalty'
+                          ? 'Weekend 2x Points for Healthy Snacks'
+                          : selectedTemplate === 'snack_box'
+                          ? 'Athlete Macro-Balanced Snack Box'
+                          : 'Pre-Workout Hydration Alert';
+
+                      const text =
+                        customMsg ||
+                        'Hey athlete! Finished your workout? Show this WhatsApp message at Verde Fuel counter today for a free Protein Energy Snack with any order. Reply STOP to opt out.';
+
+                      await api.createWhatsAppCampaign({
+                        title,
+                        target_audience: campaignAudience,
+                        template_name: `meta_${selectedTemplate}_v1`,
+                        message_text: text,
+                        recipient_count: Math.max(1, audienceCount),
+                      });
+
+                      setCampaignSuccess(`Campaign broadcast sent successfully to ${Math.max(1, audienceCount)} consented customers!`);
+                      setTimeout(() => setCampaignSuccess(null), 4000);
+                      loadData();
+                    }}
+                    className="touch-target px-4 py-2 bg-cafe-accent text-white text-xs font-semibold rounded hover:opacity-90 transition-opacity"
+                  >
+                    Send WhatsApp Campaign Broadcast
+                  </button>
+
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(
+                      customMsg ||
+                      'Hey athlete! Finished your workout? Show this WhatsApp message at Verde Fuel counter today for a free Protein Energy Snack with any order. Reply STOP to opt out.'
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="touch-target px-4 py-2 border border-cafe-border bg-cafe-surface text-cafe-text hover:bg-cafe-muted text-xs font-semibold rounded transition-colors flex items-center gap-1.5"
+                  >
+                    <span>Test on WhatsApp</span>
+                    <Icons.ExternalLink className="w-3.5 h-3.5 text-cafe-textMuted" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Live Preview Card */}
+              <div className="space-y-2">
+                <span className="text-xs font-semibold text-cafe-text block">
+                  WhatsApp Device Preview
+                </span>
+                <div className="p-4 rounded-lg bg-[#EFEAE2] dark:bg-[#1E2428] border border-cafe-border text-xs text-[#111B21] dark:text-[#E9EDEF] space-y-3 font-sans shadow-sm">
+                  <div className="flex items-center justify-between border-b border-black/10 dark:border-white/10 pb-2">
+                    <span className="font-bold text-cafe-accent">Verde Fuel Official</span>
+                    <span className="text-[10px] text-cafe-textMuted">WhatsApp Verified</span>
+                  </div>
+                  <div className="p-3 bg-white dark:bg-[#202C33] rounded-lg shadow-sm border border-black/5 dark:border-white/5 space-y-2">
+                    <p className="leading-relaxed">
+                      {customMsg ||
+                        'Hey athlete! Finished your workout? Show this WhatsApp message at Verde Fuel counter today for a free Protein Energy Snack with any order. Reply STOP to opt out.'}
+                    </p>
+                    <div className="text-right text-[10px] text-cafe-textMuted">
+                      {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ✓✓
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-cafe-textMuted italic text-center">
+                    Sent via WhatsApp Business Platform API • Opt-outs honored immediately
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Past Campaign History */}
+          <div className="border border-cafe-border bg-cafe-surface p-6 rounded space-y-4">
+            <h3 className="text-sm font-bold text-cafe-text">
+              Campaign Delivery History
+            </h3>
+            {campaigns.length === 0 ? (
+              <p className="text-xs text-cafe-textMuted">No previous campaigns sent.</p>
+            ) : (
+              <div className="divide-y divide-cafe-border">
+                {campaigns.map((camp) => (
+                  <div key={camp.id} className="py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-cafe-text">{camp.title}</span>
+                        <span className="px-2 py-0.5 rounded bg-cafe-successBg text-cafe-success border border-cafe-success/30 text-[10px] font-bold uppercase">
+                          {camp.status}
+                        </span>
+                      </div>
+                      <p className="text-cafe-textMuted mt-0.5 text-[11px] line-clamp-1 max-w-xl">
+                        {camp.message_text}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-bold text-cafe-accent block">
+                        {camp.recipient_count} recipients
+                      </span>
+                      <span className="text-[10px] text-cafe-textMuted">
+                        {new Date(camp.sent_at).toLocaleDateString()} at {new Date(camp.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
       )}
     </div>

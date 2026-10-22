@@ -27,8 +27,8 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ status }) => {
 
   if (status === 'cancelled') {
     return (
-      <div className="p-6 glass-strong rounded-[16px] border border-danger/30 text-center space-y-2">
-        <div className="w-12 h-12 rounded-full bg-danger/10 text-danger flex items-center justify-center mx-auto mb-2">
+      <div className="p-6 glass-strong rounded-[6px] border border-danger/30 text-center space-y-2">
+        <div className="w-12 h-12 rounded-[6px] bg-danger/10 text-danger flex items-center justify-center mx-auto mb-2">
           <Icons.Close className="w-6 h-6" />
         </div>
         <h3 className="text-lg font-bold text-danger">Order Cancelled</h3>
@@ -41,8 +41,8 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ status }) => {
 
   if (status === 'served') {
     return (
-      <div className="p-6 glass-strong rounded-[16px] border border-success/30 text-center space-y-2">
-        <div className="w-12 h-12 rounded-full bg-success/10 text-success flex items-center justify-center mx-auto mb-2">
+      <div className="p-6 glass-strong rounded-[6px] border border-success/30 text-center space-y-2">
+        <div className="w-12 h-12 rounded-[6px] bg-success/10 text-success flex items-center justify-center mx-auto mb-2">
           <Icons.Check className="w-6 h-6" />
         </div>
         <h3 className="text-lg font-bold text-success">Enjoy your order.</h3>
@@ -56,7 +56,8 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ status }) => {
   const currentSentence = STEPS[currentStepIndex]?.activeSentence || 'Your order is in progress';
 
   return (
-    <div className="p-5 glass-strong rounded-[16px] border border-glass-border shadow-sm space-y-5">
+    <div className="p-5 glass-strong rounded-[6px] border border-glass-border shadow-sm space-y-5">
+
       {/* 4 Steps Horizontal Tracker */}
       <div className="grid grid-cols-4 gap-2 relative">
         {STEPS.map((step, idx) => {

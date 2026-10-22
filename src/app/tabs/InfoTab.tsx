@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
-import { Cafe } from '../../types';
+import { Cafe, LoyaltyReward } from '../../types';
 import { Icons } from '../../components/Icon';
+import { api } from '../../services/api';
 
 const SESSION_DETAILS_KEY = 'cafe_customer_details';
 
@@ -13,10 +14,34 @@ interface TableAppContextType {
 export const InfoTab: React.FC = () => {
   const { cafe } = useOutletContext<TableAppContextType>();
   const [clearedNotice, setClearedNotice] = useState(false);
+  const [customerName, setCustomerName] = useState<string | null>(null);
+  const [loyaltyPoints, setLoyaltyPoints] = useState<number | null>(null);
+  const [rewards, setRewards] = useState<LoyaltyReward[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(SESSION_DETAILS_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.name) setCustomerName(parsed.name);
+        if (parsed.phone) {
+          api.getCustomerLoyalty(parsed.phone).then((data) => {
+            setLoyaltyPoints(data.points);
+          });
+        }
+      }
+    } catch {
+      // Ignore
+    }
+
+    api.getLoyaltyRewards().then((list) => setRewards(list));
+  }, []);
 
   const handleClearDetails = () => {
     try {
       sessionStorage.removeItem(SESSION_DETAILS_KEY);
+      setCustomerName(null);
+      setLoyaltyPoints(null);
       setClearedNotice(true);
       setTimeout(() => setClearedNotice(false), 3000);
     } catch {
@@ -26,7 +51,7 @@ export const InfoTab: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-28 pt-2">
-      <h1 className="text-xl font-bold text-ink px-1 tracking-tight">Cafe information</h1>
+      <h1 className="text-xl font-bold text-ink px-1 tracking-tight">Cafe & Loyalty</h1>
 
       {clearedNotice && (
         <div
@@ -37,8 +62,59 @@ export const InfoTab: React.FC = () => {
         </div>
       )}
 
+      {/* Green Fuel Loyalty Card (Phase 4) */}
+      <div className="p-4 glass-strong rounded-[6px] border border-accent/40 shadow-sm space-y-3.5 text-xs text-ink">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-[6px] bg-accent/20 border border-accent/40 flex items-center justify-center text-accent">
+              <Icons.Bolt className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-ink">Green Fuel Club</h2>
+              <p className="text-[11px] text-ink-muted">Athlete & Clean Nutrition Rewards</p>
+            </div>
+          </div>
+          {loyaltyPoints !== null && (
+            <span className="px-2.5 py-1 rounded-[4px] bg-accent/15 text-accent border border-accent/30 font-bold text-xs tabular-nums">
+              {loyaltyPoints} pts
+            </span>
+          )}
+        </div>
+
+        {customerName && (
+          <p className="text-xs font-medium text-ink">
+            Welcome back, <span className="font-bold text-accent">{customerName}</span>!
+          </p>
+        )}
+
+        <div className="p-3 rounded-[6px] glass border border-glass-border space-y-1 text-[11px] text-ink-muted leading-relaxed">
+          <p className="font-semibold text-ink">How it works:</p>
+          <p>• Earn 1 Green Fuel Point for every ₹10 spent on healthy snacks & bowls.</p>
+          <p>• Redeem rewards directly at table checkout with zero coupon codes.</p>
+        </div>
+
+        <div className="pt-1 space-y-2">
+          <span className="text-[11px] font-semibold text-ink block">Reward Milestones:</span>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            {rewards.map((r) => (
+              <div
+                key={r.id}
+                className="p-2.5 rounded-[6px] glass border border-glass-border space-y-1"
+              >
+                <span className="block font-bold text-accent text-xs tabular-nums">
+                  {r.points_cost} pts
+                </span>
+                <span className="block text-[10px] font-semibold text-ink leading-tight">
+                  {r.badge}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* Main Info Card */}
-      <div className="p-5 glass-strong rounded-[16px] border border-glass-border shadow-sm space-y-4 text-xs text-ink">
+      <div className="p-4 glass-strong rounded-[6px] border border-glass-border shadow-sm space-y-4 text-xs text-ink">
         <div>
           <h2 className="text-base font-bold text-ink mb-1">{cafe.name}</h2>
           <p className="text-ink-muted leading-relaxed">{cafe.address}</p>
@@ -83,7 +159,7 @@ export const InfoTab: React.FC = () => {
       </div>
 
       {/* Privacy and Preferences */}
-      <div className="p-5 glass-strong rounded-[16px] border border-glass-border shadow-sm space-y-3">
+      <div className="p-4 glass-strong rounded-[6px] border border-glass-border shadow-sm space-y-3">
         <h2 className="text-sm font-bold text-ink">Saved details</h2>
         <p className="text-xs text-ink-muted leading-relaxed">
           We temporarily keep your name and phone in this browser tab so you don't have to retype them on repeat orders.
@@ -91,14 +167,15 @@ export const InfoTab: React.FC = () => {
         <button
           type="button"
           onClick={handleClearDetails}
-          className="h-10 px-4 rounded-[12px] glass text-xs font-semibold text-danger border border-danger/30 hover:bg-danger/10 transition-colors duration-150"
+          className="h-9 px-4 rounded-[6px] glass text-xs font-semibold text-danger border border-danger/30 hover:bg-danger/10 transition-colors duration-150"
         >
           Clear my details
         </button>
       </div>
 
+
       {/* Policy Links */}
-      <div className="p-5 glass-strong rounded-[16px] border border-glass-border shadow-sm space-y-2.5 text-xs">
+      <div className="p-4 glass-strong rounded-[6px] border border-glass-border shadow-sm space-y-2.5 text-xs">
         <h2 className="text-sm font-bold text-ink mb-1">Policies and terms</h2>
         <div className="flex flex-col space-y-2 text-accent font-medium">
           <Link to="/privacy" target="_blank" className="hover:underline flex items-center justify-between">
@@ -125,7 +202,7 @@ export const InfoTab: React.FC = () => {
       </div>
 
       {/* Grievance Contact */}
-      <div className="p-5 glass-strong rounded-[16px] border border-glass-border shadow-sm text-xs text-ink space-y-1">
+      <div className="p-4 glass-strong rounded-[6px] border border-glass-border shadow-sm text-xs text-ink space-y-1">
         <h2 className="text-sm font-bold text-ink mb-1">Grievance and Privacy Officer</h2>
         <p className="text-ink-muted">Name: {cafe.grievance_name}</p>
         <p className="text-ink-muted">Email: {cafe.grievance_email}</p>
@@ -134,3 +211,4 @@ export const InfoTab: React.FC = () => {
     </div>
   );
 };
+

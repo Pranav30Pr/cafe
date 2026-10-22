@@ -10,6 +10,8 @@ import {
   StaffProfile,
   PrivacyRequest,
   PrivacyRequestType,
+  LoyaltyReward,
+  WhatsAppCampaign,
 } from '../types';
 import { dbStore } from './dbStore';
 import { generateSecureTableToken } from '../utils/formatters';
@@ -64,7 +66,12 @@ export const api = {
     return dbStore.regenerateTableToken(tableId, newToken);
   },
 
-  async createOrder(payload: CreateOrderPayload): Promise<{ order_id: string; short_ref: string }> {
+  async createOrder(payload: CreateOrderPayload): Promise<{
+    order_id: string;
+    short_ref: string;
+    points_earned?: number;
+    total_points?: number;
+  }> {
     return dbStore.createOrder(payload);
   },
 
@@ -189,4 +196,23 @@ export const api = {
   logoutStaff(): void {
     localStorage.removeItem(STAFF_AUTH_KEY);
   },
+
+  // --- Phase 4: Loyalty Points ---
+  async getLoyaltyRewards(): Promise<LoyaltyReward[]> {
+    return dbStore.getLoyaltyRewards();
+  },
+
+  async getCustomerLoyalty(phone: string): Promise<{ customer: Customer | null; points: number; availableRewards: LoyaltyReward[] }> {
+    return dbStore.getCustomerLoyalty(phone);
+  },
+
+  // --- Phase 4: WhatsApp Campaigns ---
+  async getWhatsAppCampaigns(): Promise<WhatsAppCampaign[]> {
+    return dbStore.getWhatsAppCampaigns();
+  },
+
+  async createWhatsAppCampaign(campaign: Omit<WhatsAppCampaign, 'id' | 'cafe_id' | 'status' | 'sent_at'>): Promise<WhatsAppCampaign> {
+    return dbStore.createWhatsAppCampaign(campaign);
+  },
 };
+

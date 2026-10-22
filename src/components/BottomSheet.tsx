@@ -92,7 +92,7 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="w-9 h-9 rounded-[10px] flex items-center justify-center text-ink-muted hover:text-ink hover:bg-glass transition-colors duration-150"
+            className="w-9 h-9 rounded-[6px] flex items-center justify-center text-ink-muted hover:text-ink hover:bg-glass transition-colors duration-150"
           >
             <Icons.Close className="w-5 h-5" />
           </button>

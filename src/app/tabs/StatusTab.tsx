@@ -58,7 +58,7 @@ export const StatusTab: React.FC = () => {
   if (orders.length === 0) {
     return (
       <div className="py-20 px-4 text-center space-y-4">
-        <div className="w-16 h-16 rounded-[16px] glass-strong border border-glass-border flex items-center justify-center mx-auto text-ink-muted">
+        <div className="w-16 h-16 rounded-[6px] glass-strong border border-glass-border flex items-center justify-center mx-auto text-ink-muted">
           <Icons.StatusTab className="w-8 h-8" />
         </div>
         <h2 className="text-xl font-bold text-ink">You have no orders yet.</h2>
@@ -68,7 +68,7 @@ export const StatusTab: React.FC = () => {
         <button
           type="button"
           onClick={() => navigate(`/t/${token}`)}
-          className="h-12 px-6 rounded-[14px] bg-accent text-accent-ink text-sm font-semibold hover:opacity-90 active:scale-95 transition-transform duration-100"
+          className="h-11 px-6 rounded-[6px] bg-accent text-accent-ink text-xs font-bold uppercase tracking-wider hover:opacity-90 active:scale-95 transition-transform duration-100"
         >
           Browse menu
         </button>
@@ -91,7 +91,7 @@ export const StatusTab: React.FC = () => {
             <article
               key={order.id}
               onClick={() => navigate(`/t/${token}/status/${order.id}`)}
-              className="p-4 glass-strong rounded-[16px] border border-glass-border shadow-sm flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform duration-100"
+              className="p-4 glass-strong rounded-[6px] border border-glass-border shadow-sm flex items-center justify-between cursor-pointer active:scale-[0.99] transition-transform duration-100"
             >
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
@@ -114,7 +114,7 @@ export const StatusTab: React.FC = () => {
 
               <div className="flex items-center gap-2">
                 <span
-                  className={`px-2.5 py-1 rounded-[8px] text-[11px] font-bold uppercase tracking-wider ${
+                  className={`px-2.5 py-1 rounded-[4px] text-[10px] font-bold uppercase tracking-wider ${
                     order.status === 'ready'
                       ? 'bg-success/20 text-success border border-success/40'
                       : order.status === 'preparing'
@@ -132,6 +132,7 @@ export const StatusTab: React.FC = () => {
           );
         })}
       </div>
+
     </div>
   );
 };

@@ -21,7 +21,10 @@ export interface CartContextType {
 
 const CartContext = createContext<CartContextType | null>(null);
 
-export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const CartProvider: React.FC<{ children: React.ReactNode; initialItems?: MenuItem[] }> = ({
+  children,
+  initialItems = [],
+}) => {
   const [cart, setCart] = useState<Record<string, number>>(() => {
     try {
       const stored = sessionStorage.getItem(CART_STORAGE_KEY);
@@ -39,7 +42,29 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
-  const [allMenuItems, setAllMenuItems] = useState<MenuItem[]>([]);
+  const [allMenuItems, setAllMenuItems] = useState<MenuItem[]>(initialItems);
+  const [itemsMap, setItemsMap] = useState<Record<string, MenuItem>>(() => {
+    try {
+      const stored = sessionStorage.getItem('cafe_cart_items_map');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    if (initialItems.length > 0) {
+      setAllMenuItems(initialItems);
+      setItemsMap((prev) => {
+        const next = { ...prev };
+        initialItems.forEach((it) => {
+          next[it.id] = it;
+        });
+        return next;
+      });
+    }
+  }, [initialItems]);
+
   const [toast, setToast] = useState<{ message: string; undoAction?: () => void } | null>(null);
   const [liveAnnouncement, setLiveAnnouncement] = useState('');
 
@@ -67,6 +92,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const addItem = useCallback((item: MenuItem) => {
+    setItemsMap((prev) => {
+      const next = { ...prev, [item.id]: item };
+      try {
+        sessionStorage.setItem('cafe_cart_items_map', JSON.stringify(next));
+      } catch {
+        // Ignore
+      }
+      return next;
+    });
+
     setCart((prev) => {
       const current = prev[item.id] || 0;
       if (current >= 20) return prev;
@@ -126,11 +161,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const cartItems = useMemo(() => {
     return Object.entries(cart)
       .map(([id, quantity]) => {
-        const item = allMenuItems.find((m) => m.id === id);
+        const item = itemsMap[id] || allMenuItems.find((m) => m.id === id);
         return item ? { item, quantity } : null;
       })
       .filter((x): x is { item: MenuItem; quantity: number } => x !== null);
-  }, [cart, allMenuItems]);
+  }, [cart, itemsMap, allMenuItems]);
+
 
   const value = useMemo(
     () => ({

@@ -14,6 +14,8 @@ import {
   OrderWithDetails,
   CreateOrderPayload,
   OrderStatus,
+  LoyaltyReward,
+  WhatsAppCampaign,
 } from '../types';
 import { getFirstName } from '../utils/formatters';
 
@@ -22,7 +24,7 @@ const STORAGE_KEY_PREFIX = 'cafe_db_';
 // Initial seed data adhering to Section 10 and seed.sql
 const DEFAULT_CAFE: Cafe = {
   id: 'a0000000-0000-0000-0000-000000000001',
-  name: 'Artisan Roast Cafe',
+  name: 'Verde Fuel & Healthy Snack Bar',
   legal_name: '[[CLIENT_TO_PROVIDE: registered legal name]]',
   address: '[[CLIENT_TO_PROVIDE: full address, e.g. Shop 4, Lane 5, Koregaon Park, Pune 411001]]',
   phone: '[[CLIENT_TO_PROVIDE: phone number]]',
@@ -30,8 +32,8 @@ const DEFAULT_CAFE: Cafe = {
   fssai_number: '[[CLIENT_TO_PROVIDE: 14 digit FSSAI licence number]]',
   gstin: '[[CLIENT_TO_PROVIDE: GSTIN if registered]]',
   opening_hours: {
-    weekdays: '8:00 AM to 10:00 PM',
-    weekends: '8:00 AM to 11:00 PM',
+    weekdays: '7:00 AM to 10:00 PM',
+    weekends: '7:00 AM to 11:00 PM',
   },
   grievance_name: '[[CLIENT_TO_PROVIDE: grievance contact person name]]',
   grievance_email: '[[CLIENT_TO_PROVIDE: grievance email]]',
@@ -48,22 +50,87 @@ const DEFAULT_TABLES: CafeTable[] = [
 ];
 
 const DEFAULT_CATEGORIES: MenuCategory[] = [
-  { id: 'c0000000-0000-0000-0000-000000000001', cafe_id: DEFAULT_CAFE.id, name: 'Hot Brews', sort_order: 1, is_active: true, created_at: new Date().toISOString() },
-  { id: 'c0000000-0000-0000-0000-000000000002', cafe_id: DEFAULT_CAFE.id, name: 'Cold Brews & Iced Tea', sort_order: 2, is_active: true, created_at: new Date().toISOString() },
-  { id: 'c0000000-0000-0000-0000-000000000003', cafe_id: DEFAULT_CAFE.id, name: 'Breakfast & Small Plates', sort_order: 3, is_active: true, created_at: new Date().toISOString() },
-  { id: 'c0000000-0000-0000-0000-000000000004', cafe_id: DEFAULT_CAFE.id, name: 'Bakery', sort_order: 4, is_active: true, created_at: new Date().toISOString() },
+  { id: 'c0000000-0000-0000-0000-000000000001', cafe_id: DEFAULT_CAFE.id, name: 'High-Protein Snacks', sort_order: 1, is_active: true, created_at: new Date().toISOString() },
+  { id: 'c0000000-0000-0000-0000-000000000002', cafe_id: DEFAULT_CAFE.id, name: 'Athlete Bowls & Fuel', sort_order: 2, is_active: true, created_at: new Date().toISOString() },
+  { id: 'c0000000-0000-0000-0000-000000000003', cafe_id: DEFAULT_CAFE.id, name: 'Superfood Smoothies', sort_order: 3, is_active: true, created_at: new Date().toISOString() },
+  { id: 'c0000000-0000-0000-0000-000000000004', cafe_id: DEFAULT_CAFE.id, name: 'Clean Cold Brews & Tonics', sort_order: 4, is_active: true, created_at: new Date().toISOString() },
 ];
 
 const DEFAULT_MENU_ITEMS: MenuItem[] = [
-  { id: 'd0000000-0000-0000-0000-000000000001', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000001', name: 'Espresso', description: 'Double shot of single origin espresso', price_paise: 12000, diet: 'veg', allergen_note: null, is_available: true, image_path: null, image_alt: null, sort_order: 1, created_at: new Date().toISOString() },
-  { id: 'd0000000-0000-0000-0000-000000000002', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000001', name: 'Cappuccino', description: 'Espresso with steamed fresh milk and microfoam', price_paise: 16000, diet: 'veg', allergen_note: 'Contains dairy', is_available: true, image_path: null, image_alt: null, sort_order: 2, created_at: new Date().toISOString() },
-  { id: 'd0000000-0000-0000-0000-000000000003', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000001', name: 'Masala Chai', description: 'Slow-brewed Assam black tea with ginger and green cardamom', price_paise: 10000, diet: 'veg', allergen_note: 'Contains dairy', is_available: true, image_path: null, image_alt: null, sort_order: 3, created_at: new Date().toISOString() },
-  { id: 'd0000000-0000-0000-0000-000000000004', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000002', name: 'Classic Cold Brew', description: 'Steeped for 18 hours in cold filtered water', price_paise: 18000, diet: 'veg', allergen_note: null, is_available: true, image_path: null, image_alt: null, sort_order: 1, created_at: new Date().toISOString() },
-  { id: 'd0000000-0000-0000-0000-000000000005', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000002', name: 'Lemon Mint Iced Tea', description: 'Brewed black tea with fresh lemon juice and mint', price_paise: 14000, diet: 'veg', allergen_note: null, is_available: true, image_path: null, image_alt: null, sort_order: 2, created_at: new Date().toISOString() },
-  { id: 'd0000000-0000-0000-0000-000000000006', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000003', name: 'Avocado Sourdough Toast', description: 'Toasted sourdough with crushed avocado and sea salt', price_paise: 24000, diet: 'veg', allergen_note: 'Contains gluten', is_available: true, image_path: null, image_alt: null, sort_order: 1, created_at: new Date().toISOString() },
-  { id: 'd0000000-0000-0000-0000-000000000007', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000003', name: 'Scrambled Eggs on Toast', description: 'Farm eggs scrambled with butter on toasted brioche', price_paise: 22000, diet: 'egg', allergen_note: 'Contains egg, dairy, gluten', is_available: true, image_path: null, image_alt: null, sort_order: 2, created_at: new Date().toISOString() },
-  { id: 'd0000000-0000-0000-0000-000000000008', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000003', name: 'Chicken Pesto Sandwich', description: 'Grilled chicken breast with basil pesto and buffalo mozzarella', price_paise: 28000, diet: 'non_veg', allergen_note: 'Contains pine nuts, dairy, gluten', is_available: true, image_path: null, image_alt: null, sort_order: 3, created_at: new Date().toISOString() },
-  { id: 'd0000000-0000-0000-0000-000000000009', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000004', name: 'Butter Croissant', description: 'Flaky laminated French butter pastry', price_paise: 15000, diet: 'veg', allergen_note: 'Contains dairy, gluten', is_available: true, image_path: null, image_alt: null, sort_order: 1, created_at: new Date().toISOString() },
+  // High-Protein Snacks
+  { id: 'd0000000-0000-0000-0000-000000000002', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000001', name: 'Protein Energy Balls (3-pack)', description: 'Raw dates, organic almond butter, chia seeds and whey isolate', price_paise: 14000, diet: 'veg', allergen_note: 'Contains nuts, dairy', is_available: true, image_path: 'https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&w=300&q=80', image_alt: 'Handmade protein energy balls', sort_order: 1, created_at: new Date().toISOString() },
+  { id: 'd0000000-0000-0000-0000-000000000003', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000001', name: 'Roasted Paprika Edamame', description: 'Crunchy high-protein edamame with pink Himalayan salt and paprika', price_paise: 13000, diet: 'veg', allergen_note: 'Contains soy', is_available: true, image_path: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=300&q=80', image_alt: 'Roasted seasoned edamame', sort_order: 2, created_at: new Date().toISOString() },
+  { id: 'd0000000-0000-0000-0000-000000000004', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000001', name: 'Baked Sweet Potato Wedges', description: 'Air-crisped wedges with avocado dip for clean recovery carbs', price_paise: 16000, diet: 'veg', allergen_note: null, is_available: true, image_path: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=300&q=80', image_alt: 'Crispy sweet potato wedges', sort_order: 3, created_at: new Date().toISOString() },
+
+  // Athlete Bowls & Fuel
+  { id: 'd0000000-0000-0000-0000-000000000005', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000002', name: 'Grilled Herb Chicken Bowl', description: '200g lean chicken breast, warm quinoa, steamed broccoli & lemon tahini', price_paise: 28000, diet: 'non_veg', allergen_note: 'Contains sesame', is_available: true, image_path: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=300&q=80', image_alt: 'Grilled herb chicken quinoa bowl', sort_order: 1, created_at: new Date().toISOString() },
+  { id: 'd0000000-0000-0000-0000-000000000006', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000002', name: 'Tofu & Avocado Power Bowl', description: 'Grilled organic tofu, hass avocado, edamame, spinach and pumpkin seeds', price_paise: 24000, diet: 'veg', allergen_note: 'Contains soy', is_available: true, image_path: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=300&q=80', image_alt: 'Fresh tofu and avocado bowl', sort_order: 2, created_at: new Date().toISOString() },
+  { id: 'd0000000-0000-0000-0000-000000000007', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000002', name: 'Scrambled Eggs on Toast', description: 'Farm eggs scrambled with olive oil on toasted sourdough', price_paise: 22000, diet: 'egg', allergen_note: 'Contains egg, gluten', is_available: true, image_path: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=300&q=80', image_alt: 'Scrambled farm eggs on sourdough', sort_order: 3, created_at: new Date().toISOString() },
+
+  // Superfood Smoothies
+  { id: 'd0000000-0000-0000-0000-000000000008', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000003', name: 'Spirulina Green Detox Smoothie', description: 'Baby spinach, cucumber, green apple, organic spirulina and coconut water', price_paise: 19000, diet: 'veg', allergen_note: null, is_available: true, image_path: 'https://images.unsplash.com/photo-1610970881699-44a5587cabec?auto=format&fit=crop&w=300&q=80', image_alt: 'Fresh green spirulina detox smoothie', sort_order: 1, created_at: new Date().toISOString() },
+  { id: 'd0000000-0000-0000-0000-000000000009', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000003', name: 'Whey Protein Peanut Butter Shake', description: '32g whey protein isolate, crushed roasted peanuts and unsweetened almond milk', price_paise: 25000, diet: 'veg', allergen_note: 'Contains peanuts, dairy', is_available: true, image_path: 'https://images.unsplash.com/photo-1579722821273-0f6c7d44362f?auto=format&fit=crop&w=300&q=80', image_alt: 'Rich peanut butter whey isolate shake', sort_order: 2, created_at: new Date().toISOString() },
+
+  // Clean Cold Brews & Tonics (Espresso kept at sort 1 with 12000 paise for test suite compatibility)
+  { id: 'd0000000-0000-0000-0000-000000000001', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000004', name: 'Espresso', description: 'Double shot of single origin pre-workout black espresso', price_paise: 12000, diet: 'veg', allergen_note: null, is_available: true, image_path: 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?auto=format&fit=crop&w=300&q=80', image_alt: 'Double shot espresso', sort_order: 1, created_at: new Date().toISOString() },
+  { id: 'd0000000-0000-0000-0000-000000000010', cafe_id: DEFAULT_CAFE.id, category_id: 'c0000000-0000-0000-0000-000000000004', name: 'Electrolyte Fresh Coconut Water', description: 'Tender coconut water infused with lime zest and pink Himalayan salt', price_paise: 11000, diet: 'veg', allergen_note: null, is_available: true, image_path: 'https://images.unsplash.com/photo-1550258987-190a2d41a8ba?auto=format&fit=crop&w=300&q=80', image_alt: 'Chilled electrolyte fresh coconut water', sort_order: 2, created_at: new Date().toISOString() },
+];
+
+
+// Phase 4 Loyalty Rewards for Gym Members & Health-Conscious Customers
+const DEFAULT_LOYALTY_REWARDS: LoyaltyReward[] = [
+  {
+    id: 'rew_electrolyte',
+    title: 'Free Electrolyte Hydration Booster',
+    points_cost: 20,
+    discount_paise: 6000,
+    badge: 'Hydration Boost',
+    description: 'Add natural electrolytes & pink Himalayan minerals to any drink',
+  },
+  {
+    id: 'rew_protein_snack',
+    title: 'Free Protein Energy Snack',
+    points_cost: 50,
+    discount_paise: 14000,
+    badge: 'Snack Reward',
+    description: 'Complimentary 3-pack raw date & almond protein energy balls',
+  },
+  {
+    id: 'rew_protein_shake',
+    title: 'Free Superfood Protein Shake',
+    points_cost: 100,
+    discount_paise: 25000,
+    badge: 'Athlete Shake',
+    description: 'Full-size 32g Whey Isolate or Vegan Plant Protein Shake',
+  },
+];
+
+// Phase 4 WhatsApp Campaigns (Meta Business Platform template style)
+const DEFAULT_WHATSAPP_CAMPAIGNS: WhatsAppCampaign[] = [
+  {
+    id: 'camp_01',
+    cafe_id: DEFAULT_CAFE.id,
+    title: 'Post-Workout Fuel Special',
+    target_audience: 'all_consented',
+    template_name: 'meta_approved_post_workout_v1',
+    message_text:
+      'Hey athlete! Smashed your workout today? Fuel your recovery at Verde Fuel: get a complimentary Protein Energy Snack with any Smoothie or Fuel Bowl today. Show this message at the counter. Reply STOP to opt out.',
+    recipient_count: 142,
+    status: 'sent',
+    sent_at: '2026-10-21T08:00:00.000Z',
+  },
+  {
+    id: 'camp_02',
+    cafe_id: DEFAULT_CAFE.id,
+    title: 'Weekend 2x Loyalty Points for Healthy Snacks',
+    target_audience: 'high_loyalty',
+    template_name: 'meta_approved_loyalty_boost_v1',
+    message_text:
+      'Green Fuel VIP: Earn DOUBLE Green Points this weekend on all healthy snacks and protein bowls. Level up your gains faster! Reply STOP to opt out.',
+    recipient_count: 58,
+    status: 'sent',
+    sent_at: '2026-10-18T10:30:00.000Z',
+  },
 ];
 
 class DatabaseStore {
@@ -137,7 +204,17 @@ class DatabaseStore {
   }
 
   getMenuItems(): MenuItem[] {
-    return this.getItem<MenuItem[]>('menu_items', DEFAULT_MENU_ITEMS);
+    const rawItems = this.getItem<MenuItem[]>('menu_items', DEFAULT_MENU_ITEMS);
+    return rawItems.map((item) => {
+      const match = DEFAULT_MENU_ITEMS.find((d) => d.id === item.id) || DEFAULT_MENU_ITEMS.find((d) => d.name === item.name);
+      return {
+        ...item,
+        category_id: (match && match.category_id) ? match.category_id : item.category_id,
+        image_path: item.image_path || (match ? match.image_path : null),
+        image_alt: item.image_alt || (match ? match.image_alt : item.name),
+        description: item.description || (match ? match.description : ''),
+      };
+    });
   }
 
   updateMenuItem(id: string, updates: Partial<Pick<MenuItem, 'price_paise' | 'is_available'>>): MenuItem {
@@ -204,7 +281,12 @@ class DatabaseStore {
   }
 
   // RPC: create_order implementation (Atomic server-side price calculation)
-  createOrder(payload: CreateOrderPayload): { order_id: string; short_ref: string } {
+  createOrder(payload: CreateOrderPayload): {
+    order_id: string;
+    short_ref: string;
+    points_earned?: number;
+    total_points?: number;
+  } {
     const table = this.getTableByToken(payload.token);
     if (!table) {
       throw new Error('Invalid or inactive table token');
@@ -323,9 +405,32 @@ class DatabaseStore {
     this.setItem('order_items', orderItems);
     this.setItem('orders', orders);
 
+    // Calculate total order amount for points calculation
+    const totalOrderPaise = orderItems
+      .filter((oi) => oi.order_id === orderId)
+      .reduce((sum, oi) => sum + oi.unit_price_paise_snapshot * oi.quantity, 0);
+
+    // Phase 4: Earn 1 Green Fuel Point for every ₹10 (1000 paise) spent
+    const pointsEarned = Math.max(1, Math.floor(totalOrderPaise / 1000));
+
+    // Handle reward redemption if requested
+    if (payload.redeem_reward_id) {
+      const rewards = this.getLoyaltyRewards();
+      const reward = rewards.find((r) => r.id === payload.redeem_reward_id);
+      if (reward && (customer.loyalty_points || 0) >= reward.points_cost) {
+        customer.loyalty_points = Math.max(0, (customer.loyalty_points || 0) - reward.points_cost);
+      }
+    }
+
+    // Add points earned on this order
+    customer.loyalty_points = (customer.loyalty_points || 0) + pointsEarned;
+    this.setItem('customers', customers);
+
     return {
       order_id: orderId,
       short_ref: orderId.substring(0, 6).toUpperCase(),
+      points_earned: pointsEarned,
+      total_points: customer.loyalty_points,
     };
   }
 
@@ -464,6 +569,49 @@ class DatabaseStore {
     return requests[idx];
   }
 
+  // --- Phase 4: Loyalty Points ---
+  getLoyaltyRewards(): LoyaltyReward[] {
+    return this.getItem<LoyaltyReward[]>('loyalty_rewards', DEFAULT_LOYALTY_REWARDS);
+  }
+
+  getCustomerLoyalty(phone: string): { customer: Customer | null; points: number; availableRewards: LoyaltyReward[] } {
+    const cleanPhone = phone.replace(/\D/g, '');
+    const customers = this.getCustomers();
+    const customer = customers.find((c) => c.phone === cleanPhone && c.deleted_at === null) || null;
+    const points = customer ? customer.loyalty_points || 0 : 0;
+    const rewards = this.getLoyaltyRewards();
+    const availableRewards = rewards.filter((r) => points >= r.points_cost);
+
+    return {
+      customer,
+      points,
+      availableRewards,
+    };
+  }
+
+  // --- Phase 4: WhatsApp Campaigns ---
+  getWhatsAppCampaigns(): WhatsAppCampaign[] {
+    return this.getItem<WhatsAppCampaign[]>('whatsapp_campaigns', DEFAULT_WHATSAPP_CAMPAIGNS);
+  }
+
+  createWhatsAppCampaign(campaign: Omit<WhatsAppCampaign, 'id' | 'cafe_id' | 'status' | 'sent_at'>): WhatsAppCampaign {
+    const campaigns = this.getWhatsAppCampaigns();
+    const newCamp: WhatsAppCampaign = {
+      id: `camp_${Date.now()}`,
+      cafe_id: this.getCafe().id,
+      title: campaign.title,
+      target_audience: campaign.target_audience,
+      template_name: campaign.template_name,
+      message_text: campaign.message_text,
+      recipient_count: campaign.recipient_count,
+      status: 'sent',
+      sent_at: new Date().toISOString(),
+    };
+    campaigns.unshift(newCamp);
+    this.setItem('whatsapp_campaigns', campaigns);
+    return newCamp;
+  }
+
   // Reset database to initial seed (useful in testing)
   resetToSeed(): void {
     this.setItem('cafe', DEFAULT_CAFE);
@@ -475,6 +623,8 @@ class DatabaseStore {
     this.setItem('orders', []);
     this.setItem('order_items', []);
     this.setItem('privacy_requests', []);
+    this.setItem('loyalty_rewards', DEFAULT_LOYALTY_REWARDS);
+    this.setItem('whatsapp_campaigns', DEFAULT_WHATSAPP_CAMPAIGNS);
   }
 }
 

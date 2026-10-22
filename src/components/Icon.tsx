@@ -1,5 +1,3 @@
-import React from 'react';
-
 export interface IconProps {
   className?: string;
   size?: number;
@@ -9,11 +7,11 @@ export interface IconProps {
 export const Icons = {
   // Menu / Utensils
   MenuTab: ({ className = 'w-6 h-6', size = 24, filled = false }: IconProps) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={filled ? '0' : '1.75'} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={filled ? '2.5' : '1.8'} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
       <path d="M18 2v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2" />
-      <path d="M15 2v18" />
+      <path d="M15 2v20" />
       <path d="M9 2v4a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2" />
-      <path d="M6 2v18" />
+      <path d="M6 2v20" />
     </svg>
   ),
 
@@ -138,4 +136,27 @@ export const Icons = {
       <polyline points="22,6 12,13 2,6" />
     </svg>
   ),
+
+  // Loyalty Club / Medal
+  ClubTab: ({ className = 'w-6 h-6', size = 24, filled = false }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={filled ? '0' : '1.75'} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
+      <circle cx="12" cy="8" r="6" />
+      <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
+    </svg>
+  ),
+
+  // Athletic Energy Bolt
+  Bolt: ({ className = 'w-5 h-5', size = 20, filled = true }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={filled ? '0' : '2'} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  ),
+
+  // Macro / Protein Flame
+  Flame: ({ className = 'w-4 h-4', size = 16, filled = true }: IconProps) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={filled ? '0' : '2'} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className}>
+      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+    </svg>
+  ),
 };
+

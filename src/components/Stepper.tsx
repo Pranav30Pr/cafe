@@ -18,7 +18,7 @@ export const Stepper: React.FC<StepperProps> = ({
 }) => {
   return (
     <div
-      className="inline-flex items-center gap-1.5 p-1 glass-strong rounded-[12px] border border-glass-border shadow-sm"
+      className="inline-flex items-center gap-1.5 p-1 glass-strong rounded-[6px] border border-glass-border shadow-sm"
       role="group"
       aria-label={`Quantity stepper for ${itemName}`}
     >
@@ -29,7 +29,7 @@ export const Stepper: React.FC<StepperProps> = ({
           onDecrement();
         }}
         aria-label={`Remove one ${itemName}`}
-        className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-[10px] bg-glass hover:bg-accent hover:text-white text-ink flex items-center justify-center transition-transform active:scale-95 duration-100 focus-visible:outline-none"
+        className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-[6px] bg-glass hover:bg-accent hover:text-white text-ink flex items-center justify-center transition-transform active:scale-95 duration-100 focus-visible:outline-none"
       >
         <Icons.Minus className="w-4 h-4" />
       </button>
@@ -49,7 +49,7 @@ export const Stepper: React.FC<StepperProps> = ({
         }}
         disabled={quantity >= max}
         aria-label={`Add one more ${itemName}`}
-        className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-[10px] bg-accent text-accent-ink hover:opacity-90 flex items-center justify-center transition-transform active:scale-95 disabled:opacity-40 duration-100 focus-visible:outline-none"
+        className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-[6px] bg-accent text-accent-ink hover:opacity-90 flex items-center justify-center transition-transform active:scale-95 disabled:opacity-40 duration-100 focus-visible:outline-none"
       >
         <Icons.Plus className="w-4 h-4" />
       </button>
