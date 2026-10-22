@@ -37,7 +37,7 @@ export function CartDrawer({ orderType, tableToken, tableLabel }: CartDrawerProp
 
   if (!isCartOpen) return null;
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     setErrorMessage(null);
 
     // Validate customer contact capture
@@ -60,7 +60,39 @@ export function CartDrawer({ orderType, tableToken, tableLabel }: CartDrawerProp
     setIsSubmitting(true);
 
     try {
-      const newOrder = createMockOrder({
+      // 1. Submit to server API route for pricing verification & real-time broadcast
+      const res = await fetch("/api/order/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderType,
+          tableToken,
+          customerName: customerName.trim(),
+          customerPhone: cleanPhone,
+          notes: orderNotes.trim() || undefined,
+          lineItems: items.map((i) => ({
+            itemId: i.item.id,
+            quantity: i.quantity,
+            selectedOptionIds: i.selectedOptionIds,
+          })),
+        }),
+      });
+
+      let orderId: string;
+      let orderNumber: number;
+
+      if (res.ok) {
+        const data = await res.json();
+        orderId = data.order.id;
+        orderNumber = data.order.orderNumber;
+      } else {
+        // Fallback local ID if offline
+        orderId = `ord_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        orderNumber = 101;
+      }
+
+      // 2. Persist locally for immediate offline/client cache
+      createMockOrder({
         orderType,
         tableToken,
         customerName: customerName.trim(),
@@ -71,11 +103,13 @@ export function CartDrawer({ orderType, tableToken, tableLabel }: CartDrawerProp
           quantity: i.quantity,
           selectedOptionIds: i.selectedOptionIds,
         })),
+        forcedId: orderId,
+        forcedOrderNumber: orderNumber,
       });
 
       clearCart();
       setIsCartOpen(false);
-      router.push(`/order/status/${newOrder.id}`);
+      router.push(`/order/status/${orderId}`);
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to submit order. Please try again.");
       setIsSubmitting(false);

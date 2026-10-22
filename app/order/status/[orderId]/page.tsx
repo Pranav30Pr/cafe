@@ -72,19 +72,56 @@ export default function OrderStatusPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (orderId) {
-      const found = getOrderById(orderId);
-      setOrder(found);
+    if (!orderId) return;
+
+    // 1. Initial fast local load
+    const local = getOrderById(orderId);
+    if (local) {
+      setOrder(local);
       setLoading(false);
     }
+
+    // 2. Server fetch
+    const fetchFromServer = async () => {
+      try {
+        const res = await fetch(`/api/order/${orderId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.order) {
+            setOrder((prev) => {
+              if (!prev) return data.order;
+              return {
+                ...prev,
+                status: data.order.status,
+                items: data.order.items || prev.items,
+              };
+            });
+          }
+        }
+      } catch {}
+      setLoading(false);
+    };
+
+    fetchFromServer();
+
+    // 3. Resilient polling fallback every 3 seconds for status updates
+    const interval = setInterval(fetchFromServer, 3000);
+    return () => clearInterval(interval);
   }, [orderId]);
 
-  const handleSimulateStatus = (nextStatus: OrderStatus) => {
+  const handleSimulateStatus = async (nextStatus: OrderStatus) => {
     if (!order) return;
     const updated = updateMockOrderStatus(order.id, nextStatus);
     if (updated) {
       setOrder({ ...updated });
     }
+    try {
+      await fetch("/api/order/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: order.id, status: nextStatus }),
+      });
+    } catch {}
   };
 
   if (loading) {

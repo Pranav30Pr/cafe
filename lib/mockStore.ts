@@ -60,9 +60,11 @@ export function createMockOrder(params: {
   customerPhone: string;
   notes?: string;
   lineItems: { itemId: string; quantity: number; selectedOptionIds?: string[] }[];
+  forcedId?: string;
+  forcedOrderNumber?: number;
 }): MockOrder {
   const orders = getStoredOrders();
-  const nextOrderNumber = 101 + orders.length;
+  const nextOrderNumber = params.forcedOrderNumber || (101 + orders.length);
 
   let tableLabel: string | undefined;
   if (params.orderType === "dine_in" && params.tableToken) {
@@ -78,7 +80,7 @@ export function createMockOrder(params: {
   const pricing = calculateOrderPricing(params.lineItems);
 
   const newOrder: MockOrder = {
-    id: `ord_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    id: params.forcedId || `ord_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     orderNumber: nextOrderNumber,
     orderType: params.orderType,
     tableToken: params.tableToken,
@@ -94,7 +96,14 @@ export function createMockOrder(params: {
     updatedAt: new Date().toISOString(),
   };
 
-  orders.unshift(newOrder);
+  // Avoid duplicates
+  const existingIndex = orders.findIndex((o) => o.id === newOrder.id);
+  if (existingIndex !== -1) {
+    orders[existingIndex] = newOrder;
+  } else {
+    orders.unshift(newOrder);
+  }
+
   saveStoredOrders(orders);
   return newOrder;
 }
@@ -111,5 +120,13 @@ export function updateMockOrderStatus(orderId: string, newStatus: OrderStatus): 
   };
 
   saveStoredOrders(orders);
+
+  // Sync to server route asynchronously
+  fetch("/api/order/status", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ orderId, status: newStatus }),
+  }).catch(() => {});
+
   return orders[index];
 }
