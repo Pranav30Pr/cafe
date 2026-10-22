@@ -53,3 +53,12 @@ body {
 .pt-safe {
   padding-top: env(safe-area-inset-top, 16px);
 }
+
+/* Hide scrollbar across browsers */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
