@@ -87,6 +87,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ order: localOrder }, { status: 201 });
   } catch (error: any) {
     console.error("Order creation error:", error);
+    if (error?.message?.startsWith("TABLE_BILLED")) {
+      return NextResponse.json(
+        { error: error.message.replace("TABLE_BILLED: ", "") },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
       { error: error.message || "Failed to process order" },
       { status: 500 }

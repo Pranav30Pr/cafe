@@ -16,6 +16,7 @@ import {
   Sparkles,
   Phone,
   User,
+  Receipt,
 } from "lucide-react";
 import { CAFE_CONFIG } from "@/config/cafe";
 import {
@@ -69,6 +70,7 @@ export default function OrderStatusPage() {
   const orderId = params?.orderId as string;
 
   const [order, setOrder] = useState<MockOrder | null>(null);
+  const [bill, setBill] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -96,6 +98,15 @@ export default function OrderStatusPage() {
                 items: data.order.items || prev.items,
               };
             });
+          }
+        }
+
+        // Fetch associated invoice / bill if any
+        const billRes = await fetch(`/api/billing?orderId=${orderId}`);
+        if (billRes.ok) {
+          const billData = await billRes.json();
+          if (billData.bill) {
+            setBill(billData.bill);
           }
         }
       } catch {}
@@ -226,6 +237,34 @@ export default function OrderStatusPage() {
             </span>
           </div>
         </div>
+
+        {/* Verified Bill / Tax Invoice Banner */}
+        {bill && (
+          <div className="p-4 sm:p-5 rounded-3xl bg-white border border-[#E6E1D5] shadow-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#1B382B] flex items-center justify-center shrink-0 border border-emerald-200">
+                <Receipt className="w-5 h-5 text-emerald-700" />
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-[#4E7A63] block">
+                  {bill.paymentStatus === "paid"
+                    ? "Tax Invoice Settled"
+                    : "Bill Generated"}
+                </span>
+                <p className="font-mono text-sm font-bold text-[#1B382B]">
+                  {bill.invoiceNumber} • ₹{bill.grandTotal}
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href={`/receipt/${bill.invoiceNumber}`}
+              className="px-4 py-2 rounded-xl bg-[#1B382B] hover:bg-[#2A5743] text-white text-xs font-bold transition-colors shrink-0 shadow-xs"
+            >
+              View Receipt &rarr;
+            </Link>
+          </div>
+        )}
 
         {/* Real-time Order State Tracker Card */}
         <div className="rounded-3xl bg-[#1B382B] text-white p-6 shadow-lg space-y-6">

@@ -11,17 +11,21 @@ import {
   Receipt,
   ExternalLink,
   RotateCcw,
+  CreditCard,
 } from "lucide-react";
 import { CAFE_CONFIG, TableConfig } from "@/config/cafe";
-import { DatabaseOrder, DatabaseOrderItem } from "@/lib/supabase/types";
+import { DatabaseOrder, DatabaseOrderItem, DatabaseBill } from "@/lib/supabase/types";
+import { SettlementModal } from "@/components/billing/SettlementModal";
 
 interface FloorPlanTabProps {
   orders: (DatabaseOrder & { items?: DatabaseOrderItem[] })[];
+  bills?: DatabaseBill[];
   onRefresh: () => void;
 }
 
-export function FloorPlanTab({ orders, onRefresh }: FloorPlanTabProps) {
+export function FloorPlanTab({ orders, bills = [], onRefresh }: FloorPlanTabProps) {
   const [selectedTable, setSelectedTable] = useState<TableConfig | null>(null);
+  const [settlingTable, setSettlingTable] = useState<TableConfig | null>(null);
 
   // Group active orders by table token
   const getTableData = (tableToken: string) => {
@@ -35,7 +39,13 @@ export function FloorPlanTab({ orders, onRefresh }: FloorPlanTabProps) {
 
     // Filter active (unsettled) orders
     const activeOrders = tableOrders.filter((o) => o.status !== "served");
-    const isOccupied = activeOrders.length > 0 || tableOrders.some((o) => o.status === "ready");
+    const isOccupied = activeOrders.length > 0;
+
+    // Check if table has a pending bill
+    const tableBill = bills.find(
+      (b) => b.tableToken === tableToken && b.paymentStatus === "pending"
+    );
+    const isBilled = Boolean(tableBill);
 
     const totalBill = tableOrders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
     const latestOrder = tableOrders[0];
@@ -44,6 +54,8 @@ export function FloorPlanTab({ orders, onRefresh }: FloorPlanTabProps) {
       tableOrders,
       activeOrders,
       isOccupied,
+      isBilled,
+      tableBill,
       totalBill,
       latestOrder,
     };
@@ -61,7 +73,7 @@ export function FloorPlanTab({ orders, onRefresh }: FloorPlanTabProps) {
             10 Active Table Stations
           </h2>
           <p className="text-xs text-[#55635B] mt-0.5">
-            Single-session ordering: all orders placed at a table merge into one unified account.
+            Single-session ordering: all orders placed at a table merge into one unified account for counter settlement.
           </p>
         </div>
 
@@ -72,11 +84,11 @@ export function FloorPlanTab({ orders, onRefresh }: FloorPlanTabProps) {
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-[#D99B52]" />
-            <span className="text-[#151E19]">Dining / In Prep</span>
+            <span className="text-[#151E19]">Dining</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-[#C4623F]" />
-            <span className="text-[#151E19]">Ready for Bill</span>
+            <span className="text-[#151E19]">Billed / Settling</span>
           </div>
         </div>
       </div>
@@ -84,7 +96,7 @@ export function FloorPlanTab({ orders, onRefresh }: FloorPlanTabProps) {
       {/* Tables Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {CAFE_CONFIG.tables.map((table) => {
-          const { isOccupied, totalBill, latestOrder, tableOrders } = getTableData(
+          const { isOccupied, isBilled, tableBill, totalBill, latestOrder } = getTableData(
             table.qrToken
           );
 
@@ -92,7 +104,11 @@ export function FloorPlanTab({ orders, onRefresh }: FloorPlanTabProps) {
           let statusBadge = "bg-emerald-50 text-emerald-700 border-emerald-200";
           let statusLabel = "Available";
 
-          if (isOccupied) {
+          if (isBilled) {
+            statusBg = "bg-[#FBF9F4] border-[#C4623F] shadow-sm";
+            statusBadge = "bg-orange-50 text-[#C4623F] border-orange-200";
+            statusLabel = "Billed";
+          } else if (isOccupied) {
             statusBg = "bg-[#FBF9F4] border-[#D99B52] shadow-sm";
             statusBadge = "bg-amber-50 text-amber-800 border-amber-200";
             statusLabel = "Occupied";
@@ -172,7 +188,7 @@ export function FloorPlanTab({ orders, onRefresh }: FloorPlanTabProps) {
 
             {/* Table Details Content */}
             {(() => {
-              const { tableOrders, totalBill, latestOrder } = getTableData(
+              const { tableOrders, isOccupied, totalBill, latestOrder } = getTableData(
                 selectedTable.qrToken
               );
 
@@ -196,7 +212,7 @@ export function FloorPlanTab({ orders, onRefresh }: FloorPlanTabProps) {
                     </Link>
                   </div>
 
-                  {latestOrder ? (
+                  {latestOrder && tableOrders.length > 0 ? (
                     <div className="p-4 rounded-2xl bg-white border border-[#E6E1D5] space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-[#151E19]">
@@ -219,10 +235,28 @@ export function FloorPlanTab({ orders, onRefresh }: FloorPlanTabProps) {
                             key={ord.id}
                             className="text-xs flex justify-between text-[#55635B] py-1"
                           >
-                            <span>Order #{ord.orderNumber} ({ord.status})</span>
-                            <span className="font-mono font-bold">₹{ord.totalAmount}</span>
+                            <span>
+                              Order #{ord.orderNumber} ({ord.status})
+                            </span>
+                            <span className="font-mono font-bold">
+                              ₹{ord.totalAmount}
+                            </span>
                           </div>
                         ))}
+                      </div>
+
+                      {/* Settlement Action Button */}
+                      <div className="pt-3 border-t border-[#F3EFE6]">
+                        <button
+                          onClick={() => {
+                            setSettlingTable(selectedTable);
+                            setSelectedTable(null);
+                          }}
+                          className="w-full py-2.5 rounded-xl bg-[#1B382B] hover:bg-[#2A5743] text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-xs"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          <span>Generate Bill & Settle Counter (₹{totalBill})</span>
+                        </button>
                       </div>
                     </div>
                   ) : (
@@ -232,10 +266,10 @@ export function FloorPlanTab({ orders, onRefresh }: FloorPlanTabProps) {
                     </div>
                   )}
 
-                  <div className="pt-3 flex items-center justify-end gap-3">
+                  <div className="pt-2 flex items-center justify-end gap-3">
                     <button
                       onClick={() => setSelectedTable(null)}
-                      className="px-5 py-2.5 rounded-xl border border-[#E6E1D5] text-xs font-semibold text-[#55635B] hover:bg-[#F3EFE6]"
+                      className="px-5 py-2 rounded-xl border border-[#E6E1D5] text-xs font-semibold text-[#55635B] hover:bg-[#F3EFE6]"
                     >
                       Close
                     </button>
@@ -245,6 +279,22 @@ export function FloorPlanTab({ orders, onRefresh }: FloorPlanTabProps) {
             })()}
           </div>
         </div>
+      )}
+
+      {/* Settlement Modal Trigger */}
+      {settlingTable && (
+        <SettlementModal
+          isOpen={true}
+          onClose={() => {
+            setSettlingTable(null);
+            onRefresh();
+          }}
+          tableToken={settlingTable.qrToken}
+          tableLabel={settlingTable.label}
+          onSettled={() => {
+            onRefresh();
+          }}
+        />
       )}
     </div>
   );

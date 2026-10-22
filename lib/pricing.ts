@@ -105,3 +105,30 @@ export function calculateOrderPricing(
     currencySymbol: CAFE_CONFIG.fiscal.currencySymbol,
   };
 }
+
+/**
+ * Calculates financial totals from a consolidated raw subtotal.
+ * Strict deterministic pre-tax discount, decoupled tax, and integer grand total.
+ */
+export function calculateBillPricingFromTotals(
+  subtotal: number,
+  discountAmount: number = 0,
+  taxRateOverride?: number
+) {
+  const safeDiscount = Math.min(Math.max(0, discountAmount), subtotal);
+  const taxableAmount = Math.max(0, subtotal - safeDiscount);
+  const taxRate = taxRateOverride !== undefined ? taxRateOverride : CAFE_CONFIG.fiscal.taxRate;
+  const taxAmount = Number(((taxableAmount * taxRate) / 100).toFixed(2));
+  const grandTotal = Math.round(taxableAmount + taxAmount);
+
+  return {
+    subtotal,
+    discountAmount: safeDiscount,
+    taxableAmount,
+    taxRatePercent: taxRate,
+    taxAmount,
+    grandTotal,
+    currency: CAFE_CONFIG.fiscal.currency,
+    currencySymbol: CAFE_CONFIG.fiscal.currencySymbol,
+  };
+}

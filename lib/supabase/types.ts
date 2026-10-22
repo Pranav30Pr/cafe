@@ -49,26 +49,52 @@ export interface DatabaseOrderItem {
 
 export interface DatabaseTableSession {
   id: string;
-  tableId: string;
-  status: SessionStatus;
+  tableToken: string;
+  tableLabel: string;
   customerName: string;
   customerPhone: string;
+  status: SessionStatus;
+  orderIds: string[];
   openedAt: string;
   closedAt: string | null;
+}
+
+export interface BillItemSnapshot {
+  name: string;
+  unitPrice: number;
+  quantity: number;
+  itemTotal: number;
+  optionsSummary?: string[];
 }
 
 export interface DatabaseBill {
   id: string;
   invoiceNumber: string;
   tableSessionId?: string | null;
+  tableToken?: string | null;
+  tableLabel?: string | null;
   orderId?: string | null;
+  orderIds: string[];
+  orderType: OrderType;
+  customerName: string;
+  customerPhone: string;
+  items: BillItemSnapshot[];
   subtotal: number;
   discountAmount: number;
+  discountReason?: string;
   taxableAmount: number;
+  taxRatePercent: number;
   taxAmount: number;
   grandTotal: number;
   paymentStatus: PaymentStatus;
   paymentMode?: PaymentMode | null;
+  splitBreakdown?: {
+    cash?: number;
+    upi?: number;
+    card?: number;
+  } | null;
   settledAt?: string | null;
+  settledBy?: string | null;
+  voidReason?: string | null;
   createdAt: string;
 }

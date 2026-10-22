@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CAFE_CONFIG, MenuItem } from "@/config/cafe";
-import { DatabaseOrder, DatabaseOrderItem } from "@/lib/supabase/types";
+import { DatabaseOrder, DatabaseOrderItem, DatabaseBill } from "@/lib/supabase/types";
 import { AdminHeader, AdminTab } from "@/components/admin/AdminHeader";
 import { FloorPlanTab } from "@/components/admin/FloorPlanTab";
 import { MenuManagerTab } from "@/components/admin/MenuManagerTab";
@@ -12,10 +12,11 @@ import { ReportsTab } from "@/components/admin/ReportsTab";
 export default function AdminPortalPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>("floor");
   const [orders, setOrders] = useState<(DatabaseOrder & { items?: DatabaseOrderItem[] })[]>([]);
+  const [bills, setBills] = useState<DatabaseBill[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([...CAFE_CONFIG.menuItems]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch orders and menu items
+  // Fetch orders, bills, and menu items
   const fetchData = async () => {
     try {
       // 1. Fetch live queue
@@ -25,7 +26,14 @@ export default function AdminPortalPage() {
         setOrders(qData.orders || []);
       }
 
-      // 2. Fetch menu overrides
+      // 2. Fetch bills
+      const bRes = await fetch("/api/billing");
+      if (bRes.ok) {
+        const bData = await bRes.json();
+        setBills(bData.bills || []);
+      }
+
+      // 3. Fetch menu overrides
       const mRes = await fetch("/api/admin/menu");
       if (mRes.ok) {
         const mData = await mRes.json();
@@ -75,15 +83,28 @@ export default function AdminPortalPage() {
     } catch {}
   };
 
-  // Metrics
-  const totalRevenue = orders
-    .filter((o) => o.status !== "cancelled" && o.status !== "rejected")
-    .reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
+  // Metrics: prioritize settled bills revenue plus active orders
+  const settledRevenue = bills
+    .filter((b) => b.paymentStatus === "paid")
+    .reduce((sum, b) => sum + b.grandTotal, 0);
+
+  const totalRevenue =
+    settledRevenue > 0
+      ? settledRevenue
+      : orders
+          .filter((o) => o.status !== "cancelled" && o.status !== "rejected")
+          .reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
 
   // Occupied tables count
   const occupiedTokens = new Set(
     orders
-      .filter((o) => o.orderType === "dine_in" && o.status !== "served" && o.status !== "cancelled" && o.status !== "rejected")
+      .filter(
+        (o) =>
+          o.orderType === "dine_in" &&
+          o.status !== "served" &&
+          o.status !== "cancelled" &&
+          o.status !== "rejected"
+      )
       .map((o) => o.tableToken)
   );
 
@@ -101,7 +122,7 @@ export default function AdminPortalPage() {
       {/* Main Tab Content */}
       <main className="max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8 flex-1">
         {activeTab === "floor" && (
-          <FloorPlanTab orders={orders} onRefresh={fetchData} />
+          <FloorPlanTab orders={orders} bills={bills} onRefresh={fetchData} />
         )}
 
         {activeTab === "menu" && (
@@ -114,7 +135,9 @@ export default function AdminPortalPage() {
 
         {activeTab === "qr" && <QrSheetTab />}
 
-        {activeTab === "reports" && <ReportsTab orders={orders} />}
+        {activeTab === "reports" && (
+          <ReportsTab orders={orders} bills={bills} onRefresh={fetchData} />
+        )}
       </main>
     </div>
   );
