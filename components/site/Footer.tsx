@@ -33,10 +33,10 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-[#FBF9F4]/80">
               <li>
                 <Link
-                  href="/order/token-mg-t01-dinein"
+                  href="/scan"
                   className="hover:text-white transition-colors flex items-center gap-2"
                 >
-                  <span>Dine-In Table QR Order (Demo Table 1)</span>
+                  <span>Scan Table QR Code (Live Camera & Table Selector)</span>
                 </Link>
               </li>
               <li>

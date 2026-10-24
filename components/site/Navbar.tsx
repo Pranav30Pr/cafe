@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Menu, X, Sparkles, MapPin, Clock } from "lucide-react";
+import { Menu, X, Sparkles, MapPin, Clock, QrCode } from "lucide-react";
 import { CAFE_CONFIG } from "@/config/cafe";
+import { QrScannerModal } from "@/components/customer/QrScannerModal";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 bg-[#FBF9F4]/90 backdrop-blur-md border-b border-[#E6E1D5] transition-all">
@@ -58,12 +60,13 @@ export function Navbar() {
           >
             Takeaway
           </Link>
-          <Link
-            href="/order/token-mg-t01-dinein"
-            className="px-5 py-2 rounded-full bg-[#1B382B] text-white text-xs font-semibold shadow hover:bg-[#12241C] transition-colors"
+          <button
+            onClick={() => setScannerOpen(true)}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#1B382B] text-white text-xs font-semibold shadow hover:bg-[#12241C] transition-colors"
           >
-            Dine-In QR Order
-          </Link>
+            <QrCode className="w-3.5 h-3.5 text-[#8EBA9D]" />
+            <span>Scan Table QR</span>
+          </button>
         </div>
 
         {/* Mobile Hamburger Button */}
@@ -111,13 +114,16 @@ export function Navbar() {
           </div>
 
           <div className="pt-4 border-t border-[#E6E1D5] flex flex-col gap-2.5">
-            <Link
-              href="/order/token-mg-t01-dinein"
-              onClick={() => setMobileMenuOpen(false)}
-              className="w-full text-center py-3 rounded-xl bg-[#1B382B] text-white font-medium text-sm shadow"
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setScannerOpen(true);
+              }}
+              className="w-full text-center py-3 rounded-xl bg-[#1B382B] text-white font-medium text-sm shadow flex items-center justify-center gap-2"
             >
-              Order at Table (Dine-In)
-            </Link>
+              <QrCode className="w-4 h-4 text-[#8EBA9D]" />
+              <span>Scan Table QR Code</span>
+            </button>
             <Link
               href="/order/takeaway"
               onClick={() => setMobileMenuOpen(false)}
@@ -128,6 +134,12 @@ export function Navbar() {
           </div>
         </div>
       )}
+
+      {/* Scanner Modal */}
+      <QrScannerModal
+        isOpen={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+      />
     </header>
   );
 }

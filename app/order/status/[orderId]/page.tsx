@@ -64,6 +64,37 @@ const LIFECYCLE_STEPS: {
   },
 ];
 
+function normalizeOrder(rawOrder: any): MockOrder {
+  const currencySymbol = CAFE_CONFIG.fiscal?.currencySymbol || "₹";
+  const items = (rawOrder.items || []).map((it: any) => ({
+    itemId: it.menuItemId || it.itemId || it.id || "",
+    name: it.name || it.itemNameSnapshot || "Item",
+    unitPrice: it.unitPrice ?? it.unitPriceSnapshot ?? 0,
+    quantity: it.quantity || 1,
+    selectedOptionsSummary: it.selectedOptionsSummary || it.selectedOptions || [],
+    itemTotal: it.itemTotal ?? ((it.unitPrice ?? it.unitPriceSnapshot ?? 0) * (it.quantity || 1)),
+  }));
+
+  const subtotal = rawOrder.pricing?.subtotal ?? rawOrder.subtotal ?? 0;
+  const grandTotal = rawOrder.pricing?.grandTotal ?? rawOrder.totalAmount ?? subtotal;
+  const taxAmount = rawOrder.pricing?.taxAmount ?? rawOrder.taxAmount ?? 0;
+
+  return {
+    ...rawOrder,
+    items,
+    pricing: {
+      currencySymbol,
+      subtotal,
+      discountAmount: rawOrder.discountAmount ?? 0,
+      taxableAmount: rawOrder.taxableAmount ?? subtotal,
+      taxRate: rawOrder.taxRate ?? 0,
+      taxAmount,
+      grandTotal,
+      items,
+    },
+  };
+}
+
 export default function OrderStatusPage() {
   const params = useParams();
   const router = useRouter();
@@ -79,7 +110,7 @@ export default function OrderStatusPage() {
     // 1. Initial fast local load
     const local = getOrderById(orderId);
     if (local) {
-      setOrder(local);
+      setOrder(normalizeOrder(local));
       setLoading(false);
     }
 
@@ -90,14 +121,7 @@ export default function OrderStatusPage() {
         if (res.ok) {
           const data = await res.json();
           if (data.order) {
-            setOrder((prev) => {
-              if (!prev) return data.order;
-              return {
-                ...prev,
-                status: data.order.status,
-                items: data.order.items || prev.items,
-              };
-            });
+            setOrder(normalizeOrder(data.order));
           }
         }
 
@@ -409,7 +433,7 @@ export default function OrderStatusPage() {
                       {lineItem.name}
                     </span>
                   </div>
-                  {lineItem.selectedOptionsSummary.length > 0 && (
+                  {(lineItem.selectedOptionsSummary?.length ?? 0) > 0 && (
                     <p className="text-[11px] text-[#4E7A63] pl-5 font-medium">
                       {lineItem.selectedOptionsSummary.join(", ")}
                     </p>
@@ -417,7 +441,7 @@ export default function OrderStatusPage() {
                 </div>
 
                 <span className="font-mono text-xs font-bold text-[#151E19] shrink-0">
-                  {order.pricing.currencySymbol}{lineItem.itemTotal}
+                  {order.pricing?.currencySymbol || "₹"}{lineItem.itemTotal}
                 </span>
               </div>
             ))}
@@ -435,16 +459,16 @@ export default function OrderStatusPage() {
           <div className="pt-4 border-t border-[#E6E1D5] space-y-2 text-xs">
             <div className="flex justify-between text-[#55635B]">
               <span>Subtotal</span>
-              <span className="font-mono">{order.pricing.currencySymbol}{order.pricing.subtotal}</span>
+              <span className="font-mono">{order.pricing?.currencySymbol || "₹"}{order.pricing?.subtotal ?? 0}</span>
             </div>
             <div className="flex justify-between text-[#55635B]">
               <span>GST Tax (0% Default)</span>
-              <span className="font-mono">{order.pricing.currencySymbol}0</span>
+              <span className="font-mono">{order.pricing?.currencySymbol || "₹"}0</span>
             </div>
             <div className="pt-2 border-t border-[#E6E1D5] flex justify-between text-base font-bold text-[#1B382B]">
               <span>Amount Due</span>
               <span className="font-mono text-lg">
-                {order.pricing.currencySymbol}{order.pricing.grandTotal}
+                {order.pricing?.currencySymbol || "₹"}{order.pricing?.grandTotal ?? 0}
               </span>
             </div>
           </div>

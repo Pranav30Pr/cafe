@@ -210,7 +210,7 @@ export function CartDrawer({ orderType, tableToken, tableLabel }: CartDrawerProp
                           </h4>
                         </div>
 
-                        {cartItem.selectedOptionsSummary.length > 0 && (
+                        {(cartItem.selectedOptionsSummary?.length ?? 0) > 0 && (
                           <p className="text-[11px] text-[#4E7A63] mt-0.5 font-medium">
                             {cartItem.selectedOptionsSummary.join(", ")}
                           </p>
