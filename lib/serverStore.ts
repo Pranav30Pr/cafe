@@ -1,5 +1,5 @@
 import { calculateOrderPricing, calculateBillPricingFromTotals } from "./pricing";
-import { CAFE_CONFIG } from "@/config/cafe";
+import { CAFE_CONFIG, resolveTable } from "@/config/cafe";
 import {
   DatabaseOrder,
   DatabaseOrderItem,
@@ -75,9 +75,13 @@ export function broadcastOrder(order: DatabaseOrder & { items: DatabaseOrderItem
 // -------------------------------------------------------------
 
 export function getActiveTableSession(tableToken: string) {
+  const table = resolveTable(tableToken);
+  const canonicalToken = table ? table.qrToken : tableToken;
   return (
     store.sessions.find(
-      (s) => s.tableToken === tableToken && s.status !== "closed"
+      (s) =>
+        (s.tableToken === canonicalToken || s.tableToken === tableToken) &&
+        s.status !== "closed"
     ) || null
   );
 }
@@ -98,8 +102,11 @@ export function createServerOrder(params: {
   let activeSessionId: string | null = null;
 
   if (params.orderType === "dine_in" && params.tableToken) {
-    const matchedTable = CAFE_CONFIG.tables.find((t) => t.qrToken === params.tableToken);
+    const matchedTable = resolveTable(params.tableToken);
     tableLabel = matchedTable ? matchedTable.label : "Dine-In Table";
+    if (matchedTable) {
+      params.tableToken = matchedTable.qrToken;
+    }
 
     // Check existing table session
     const existingSession = getActiveTableSession(params.tableToken);

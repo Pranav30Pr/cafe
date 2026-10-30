@@ -1,4 +1,4 @@
-import { CAFE_CONFIG, MenuItem } from "@/config/cafe";
+import { CAFE_CONFIG, MenuItem, resolveTable } from "@/config/cafe";
 import { calculateOrderPricing, CalculatedLineItem, PriceCalculationResult } from "@/lib/pricing";
 
 export type OrderStatus =
@@ -68,8 +68,11 @@ export function createMockOrder(params: {
 
   let tableLabel: string | undefined;
   if (params.orderType === "dine_in" && params.tableToken) {
-    const matchedTable = CAFE_CONFIG.tables.find((t) => t.qrToken === params.tableToken);
+    const matchedTable = resolveTable(params.tableToken);
     tableLabel = matchedTable ? matchedTable.label : "Dine-In Table";
+    if (matchedTable) {
+      params.tableToken = matchedTable.qrToken;
+    }
   }
 
   const pickupToken =

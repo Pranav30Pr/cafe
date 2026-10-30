@@ -80,6 +80,67 @@ export interface CafeConfig {
   menuItems: MenuItem[];
 }
 
+/**
+ * Robustly resolves a TableConfig from any token format:
+ * - Full QR token: "token-mg-t01-dinein"
+ * - Table ID: "tbl-01" or "tbl-1"
+ * - Short code: "T01", "t01", "T1", "t1", "1"
+ * - Label: "Table 1", "Table 10 (Garden)"
+ * - Full or partial URL: "http://localhost:3000/order/T01"
+ */
+export function resolveTable(tokenOrId?: string | null): TableConfig | undefined {
+  if (!tokenOrId) return undefined;
+  let candidate = tokenOrId.trim();
+  if (!candidate) return undefined;
+
+  // If a full or relative URL was provided, extract the last path segment
+  if (candidate.startsWith("http://") || candidate.startsWith("https://") || candidate.includes("/")) {
+    try {
+      const url = candidate.startsWith("http")
+        ? new URL(candidate)
+        : new URL(`http://dummy.local/${candidate.replace(/^\/+/, "")}`);
+      const segments = url.pathname.split("/").filter(Boolean);
+      if (segments.length > 0) {
+        candidate = segments[segments.length - 1];
+      }
+    } catch {}
+  }
+
+  const lower = candidate.toLowerCase();
+
+  // 1. Exact match on qrToken or id
+  const direct = CAFE_CONFIG.tables.find(
+    (t) => t.qrToken.toLowerCase() === lower || t.id.toLowerCase() === lower
+  );
+  if (direct) return direct;
+
+  // 2. Exact match on table label
+  const labelMatch = CAFE_CONFIG.tables.find(
+    (t) => t.label.toLowerCase() === lower
+  );
+  if (labelMatch) return labelMatch;
+
+  // 3. Clean alphanumeric match (removes hyphens, underscores, spaces)
+  const clean = lower.replace(/[^a-z0-9]/g, "");
+  for (const t of CAFE_CONFIG.tables) {
+    if (t.qrToken.replace(/[^a-z0-9]/g, "").toLowerCase() === clean) return t;
+    if (t.id.replace(/[^a-z0-9]/g, "").toLowerCase() === clean) return t;
+    if (t.label.replace(/[^a-z0-9]/g, "").toLowerCase() === clean) return t;
+  }
+
+  // 4. Numeric / prefix match: e.g. "T01", "t01", "T1", "t1", "1", "tbl-1", "table 1"
+  const numMatch = lower.match(/(?:tbl|table|t)?[\s_-]*0*([1-9]|10)\b/i);
+  if (numMatch) {
+    const num = parseInt(numMatch[1], 10);
+    const found = CAFE_CONFIG.tables.find(
+      (t) => t.id === `tbl-${String(num).padStart(2, "0")}`
+    );
+    if (found) return found;
+  }
+
+  return undefined;
+}
+
 export const CAFE_CONFIG: CafeConfig = {
   identity: {
     name: "Meeva Greens",

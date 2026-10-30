@@ -1,13 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, Sparkles, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Sparkles, Plus, QrCode } from "lucide-react";
 import { CAFE_CONFIG, MenuItem } from "@/config/cafe";
+import { getActiveSession, ActiveSession } from "@/lib/session";
+import { OrderContextModal } from "@/components/customer/OrderContextModal";
+import { QrScannerModal } from "@/components/customer/QrScannerModal";
 
 export function MenuHighlights() {
+  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [activeSession, setActiveSessionState] = useState<ActiveSession | null>(null);
+  const [selectedItemForOrder, setSelectedItemForOrder] = useState<MenuItem | null>(null);
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const [scannerModalOpen, setScannerModalOpen] = useState(false);
+
+  useEffect(() => {
+    setActiveSessionState(getActiveSession());
+  }, []);
 
   const categories = [
     { id: "all", name: "All Signatures" },
@@ -18,6 +30,39 @@ export function MenuHighlights() {
     selectedCategory === "all"
       ? CAFE_CONFIG.menuItems
       : CAFE_CONFIG.menuItems.filter((i) => i.categoryId === selectedCategory);
+
+  const handleItemOrderClick = (item: MenuItem) => {
+    const session = getActiveSession();
+    if (session) {
+      if (session.orderType === "dine_in" && session.tableToken) {
+        router.push(`/order/${session.tableToken}?addItem=${encodeURIComponent(item.id)}`);
+        return;
+      }
+      if (session.orderType === "takeaway") {
+        router.push(`/order/takeaway?addItem=${encodeURIComponent(item.id)}`);
+        return;
+      }
+    }
+
+    // No session set yet: open dining experience chooser with this item attached
+    setSelectedItemForOrder(item);
+    setOrderModalOpen(true);
+  };
+
+  const handleBannerMenuClick = () => {
+    const session = getActiveSession();
+    if (session) {
+      if (session.orderType === "dine_in" && session.tableToken) {
+        router.push(`/order/${session.tableToken}`);
+        return;
+      }
+      if (session.orderType === "takeaway") {
+        router.push("/order/takeaway");
+        return;
+      }
+    }
+    setScannerModalOpen(true);
+  };
 
   return (
     <section id="highlights" className="py-16 sm:py-24 max-w-6xl mx-auto px-4 sm:px-6">
@@ -42,7 +87,7 @@ export function MenuHighlights() {
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`whitespace-nowrap px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all ${
+              className={`whitespace-nowrap px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all cursor-pointer ${
                 isActive
                   ? "bg-[#1B382B] text-white shadow-sm"
                   : "bg-white border border-[#E6E1D5] text-[#55635B] hover:border-[#4E7A63] hover:text-[#151E19]"
@@ -112,13 +157,13 @@ export function MenuHighlights() {
                 </p>
               </div>
 
-              <Link
-                href="/order/token-mg-t01-dinein"
-                className="inline-flex items-center gap-1 text-xs font-semibold px-3.5 py-1.5 rounded-full bg-[#F3EFE6] text-[#1B382B] group-hover:bg-[#1B382B] group-hover:text-white transition-all"
+              <button
+                onClick={() => handleItemOrderClick(item)}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-full bg-[#F3EFE6] text-[#1B382B] group-hover:bg-[#1B382B] group-hover:text-white transition-all cursor-pointer shadow-2xs"
               >
                 <span>Order</span>
                 <Plus className="w-3.5 h-3.5" />
-              </Link>
+              </button>
             </div>
           </div>
         ))}
@@ -131,17 +176,36 @@ export function MenuHighlights() {
             Ready to explore our complete culinary menu?
           </h3>
           <p className="text-xs sm:text-sm text-[#8EBA9D]">
-            Scan at your table or start a live ordering session directly on your phone.
+            {activeSession
+              ? `Active ${activeSession.orderType === "dine_in" ? activeSession.tableLabel : "Takeaway"} session detected`
+              : "Scan at your table or start a live ordering session directly on your phone."}
           </p>
         </div>
-        <Link
-          href="/order/token-mg-t01-dinein"
-          className="whitespace-nowrap px-6 py-3 rounded-full bg-[#C4623F] text-white text-xs sm:text-sm font-semibold hover:bg-[#A84E2E] shadow-md transition-all flex items-center gap-2"
+        <button
+          onClick={handleBannerMenuClick}
+          className="whitespace-nowrap px-6 py-3 rounded-full bg-[#C4623F] text-white text-xs sm:text-sm font-semibold hover:bg-[#A84E2E] shadow-md transition-all flex items-center gap-2 cursor-pointer"
         >
-          <span>Open Digital Menu (Demo Table 1)</span>
+          <span>
+            {activeSession
+              ? `Continue Ordering (${activeSession.orderType === "dine_in" ? activeSession.tableLabel : "Takeaway"})`
+              : "Open Digital Menu & Table Selector"}
+          </span>
           <ArrowRight className="w-4 h-4" />
-        </Link>
+        </button>
       </div>
+
+      {/* Order Context Modal when an item is clicked without active table session */}
+      <OrderContextModal
+        isOpen={orderModalOpen}
+        onClose={() => setOrderModalOpen(false)}
+        selectedItem={selectedItemForOrder}
+      />
+
+      {/* QR Scanner & Table Picker Modal */}
+      <QrScannerModal
+        isOpen={scannerModalOpen}
+        onClose={() => setScannerModalOpen(false)}
+      />
     </section>
   );
 }

@@ -16,14 +16,23 @@ import {
   Users,
 } from "lucide-react";
 import jsQR from "jsqr";
-import { CAFE_CONFIG } from "@/config/cafe";
+import QRCode from "qrcode";
+import { CAFE_CONFIG, resolveTable } from "@/config/cafe";
+import { setTableSessionByToken } from "@/lib/session";
 
 interface QrScannerModalProps {
   isOpen: boolean;
   onClose: () => void;
+  pendingItemId?: string | null;
+  onSelectTable?: (token: string) => void;
 }
 
-export function QrScannerModal({ isOpen, onClose }: QrScannerModalProps) {
+export function QrScannerModal({
+  isOpen,
+  onClose,
+  pendingItemId,
+  onSelectTable,
+}: QrScannerModalProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"camera" | "picker" | "demo">("camera");
 
@@ -37,16 +46,56 @@ export function QrScannerModal({ isOpen, onClose }: QrScannerModalProps) {
   const [scannedResult, setScannedResult] = useState<string | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanningLoopRef = useRef<number | null>(null);
+  const isScanningRef = useRef<boolean>(false);
+
+  // Real QR code map for Tab 3 (Demo / Stand preview)
+  const [demoQrMap, setDemoQrMap] = useState<Record<string, string>>({});
+
+  // Generate demo QR images on mount
+  useEffect(() => {
+    let isMounted = true;
+    const generateDemoQrs = async () => {
+      const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+      const map: Record<string, string> = {};
+      for (const table of CAFE_CONFIG.tables) {
+        try {
+          const url = `${origin}/order/${table.qrToken}`;
+          const dataUrl = await QRCode.toDataURL(url, {
+            width: 240,
+            margin: 2,
+            color: { dark: "#1B382B", light: "#FFFFFF" },
+          });
+          map[table.id] = dataUrl;
+        } catch {}
+      }
+      if (isMounted) setDemoQrMap(map);
+    };
+    generateDemoQrs();
+    return () => {
+      isMounted = false;
+    };
+  }, []);  
 
   // Stop camera stream safely
   const stopCamera = useCallback(() => {
+    isScanningRef.current = false;
     if (scanningLoopRef.current) {
       cancelAnimationFrame(scanningLoopRef.current);
       scanningLoopRef.current = null;
     }
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {}
+      });
       streamRef.current = null;
+    }
+    if (videoRef.current) {
+      try {
+        videoRef.current.pause();
+        videoRef.current.srcObject = null;
+      } catch {}
     }
     setCameraActive(false);
   }, []);
@@ -54,122 +103,177 @@ export function QrScannerModal({ isOpen, onClose }: QrScannerModalProps) {
   // Handle successful QR detection
   const handleDetectedData = useCallback(
     (rawData: string) => {
+      if (!rawData) return;
       const trimmed = rawData.trim();
-      let matchedToken: string | null = null;
-
-      // 1. Direct match with table token
-      const byToken = CAFE_CONFIG.tables.find((t) => t.qrToken === trimmed);
-      if (byToken) {
-        matchedToken = byToken.qrToken;
-      }
-
-      // 2. Extract from URL if scanned a full URL
-      if (!matchedToken) {
-        try {
-          const url = new URL(trimmed);
-          const pathSegments = url.pathname.split("/").filter(Boolean);
-          // e.g. /order/token-mg-t01-dinein
-          const lastSegment = pathSegments[pathSegments.length - 1];
-          const matchedByUrl = CAFE_CONFIG.tables.find((t) => t.qrToken === lastSegment);
-          if (matchedByUrl) {
-            matchedToken = matchedByUrl.qrToken;
-          }
-        } catch {
-          // Not a URL
-        }
-      }
-
-      // 3. Fallback: match by table number/label (e.g. "T1", "1", "Table 1")
-      if (!matchedToken) {
-        const numOnly = trimmed.replace(/\D/g, "");
-        if (numOnly) {
-          const tableNum = parseInt(numOnly, 10);
-          const matchedByNum = CAFE_CONFIG.tables.find((t) => t.id === `tbl-${String(tableNum).padStart(2, "0")}`);
-          if (matchedByNum) {
-            matchedToken = matchedByNum.qrToken;
-          }
-        }
-      }
+      const matchedTable = resolveTable(trimmed);
+      const matchedToken = matchedTable ? matchedTable.qrToken : null;
 
       if (matchedToken) {
         setScannedResult(matchedToken);
+        setTableSessionByToken(matchedToken);
         stopCamera();
+
         setTimeout(() => {
           onClose();
-          router.push(`/order/${matchedToken}`);
-        }, 600);
+          if (onSelectTable) {
+            onSelectTable(matchedToken);
+          } else {
+            const dest = pendingItemId
+              ? `/order/${matchedToken}?addItem=${encodeURIComponent(pendingItemId)}`
+              : `/order/${matchedToken}`;
+            router.push(dest);
+          }
+        }, 500);
       } else {
-        setCameraError(`Scanned code "${trimmed.slice(0, 35)}" is not a valid table QR.`);
+        setCameraError(`Scanned code "${trimmed.slice(0, 30)}..." is not an active Meeva Greens table QR.`);
       }
     },
-    [onClose, router, stopCamera]
+    [onClose, onSelectTable, pendingItemId, router, stopCamera]
   );
 
-  // Scan frame from video feed
-  const scanFrame = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current) return;
+  // Scan frame from video feed using BarcodeDetector if available, fallback to jsQR
+  const scanFrame = useCallback(async () => {
+    if (!isScanningRef.current) return;
+
     const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!video) {
+      scanningLoopRef.current = requestAnimationFrame(scanFrame);
+      return;
+    }
 
-    if (video.readyState === video.HAVE_ENOUGH_DATA && ctx) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Only process when video has active frame data
+    if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+      // 1. Try Native BarcodeDetector (Supported in modern Chrome Android & Safari)
+      if (typeof window !== "undefined" && "BarcodeDetector" in window) {
+        try {
+          const barcodeDetector = new (window as any).BarcodeDetector({
+            formats: ["qr_code"],
+          });
+          const barcodes = await barcodeDetector.detect(video);
+          if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+            handleDetectedData(barcodes[0].rawValue);
+            return;
+          }
+        } catch {}
+      }
 
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: "dontInvert",
-      });
+      // 2. Robust fallback using jsQR with 2D Canvas
+      try {
+        let canvas = canvasRef.current;
+        if (!canvas) {
+          canvas = document.createElement("canvas");
+          canvasRef.current = canvas;
+        }
 
-      if (code && code.data) {
-        handleDetectedData(code.data);
-        return; // Pause scanning loop on detection
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (ctx) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const decodeFn = (jsQR as any).default || jsQR;
+          const code = decodeFn(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "attemptBoth",
+          });
+
+          if (code && code.data) {
+            handleDetectedData(code.data);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("jsQR frame scan error:", err);
       }
     }
 
-    scanningLoopRef.current = requestAnimationFrame(scanFrame);
+    if (isScanningRef.current) {
+      scanningLoopRef.current = requestAnimationFrame(scanFrame);
+    }
   }, [handleDetectedData]);
 
-  // Start camera stream
+  // Start camera stream with progressive fallbacks
   const startCamera = useCallback(async () => {
     stopCamera();
     setCameraError(null);
     setScannedResult(null);
 
-    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-      setCameraError("Camera access is not supported by your browser. Please select your table below.");
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices ||
+      !navigator.mediaDevices.getUserMedia
+    ) {
+      setCameraError(
+        "Camera access is not supported by your browser or connection. You can pick your table directly from the list below."
+      );
       return;
     }
 
+    let stream: MediaStream | null = null;
+
+    // Constraint attempt 1: Ideal facingMode and dimensions
     try {
-      const constraints: MediaStreamConstraints = {
+      stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: { ideal: facingMode },
           width: { ideal: 1280 },
           height: { ideal: 720 },
         },
         audio: false,
-      };
-
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.setAttribute("playsinline", "true");
-        await videoRef.current.play();
-        setCameraActive(true);
-        scanningLoopRef.current = requestAnimationFrame(scanFrame);
+      });
+    } catch {
+      // Constraint attempt 2: Ideal facingMode without fixed dimensions
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: facingMode } },
+          audio: false,
+        });
+      } catch {
+        // Constraint attempt 3: Generic video device
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
+        } catch (err: any) {
+          console.warn("Camera init error:", err);
+          if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+            setCameraError(
+              "Camera permission was denied. Please allow camera permissions in your browser or select your table below."
+            );
+          } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+            setCameraError(
+              "No camera device detected on this system. Please choose your table directly."
+            );
+          } else {
+            setCameraError(
+              "Could not start video stream. You can pick your table directly below."
+            );
+          }
+          return;
+        }
       }
-    } catch (err: any) {
-      console.warn("Camera init error:", err);
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-        setCameraError("Camera permission was denied. You can select your table directly from the list.");
-      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
-        setCameraError("No camera device found on this system. Please use the table selector.");
-      } else {
-        setCameraError("Could not access camera. Please select your table from the list.");
+    }
+
+    if (stream) {
+      streamRef.current = stream;
+      if (videoRef.current) {
+        const vid = videoRef.current;
+        vid.srcObject = stream;
+        vid.setAttribute("playsinline", "true");
+        vid.setAttribute("webkit-playsinline", "true");
+        vid.muted = true;
+        try {
+          await vid.play();
+          setCameraActive(true);
+          isScanningRef.current = true;
+          scanningLoopRef.current = requestAnimationFrame(scanFrame);
+        } catch (playErr) {
+          console.warn("Video play error:", playErr);
+          setCameraActive(true);
+          isScanningRef.current = true;
+          scanningLoopRef.current = requestAnimationFrame(scanFrame);
+        }
       }
     }
   }, [facingMode, scanFrame, stopCamera]);
@@ -182,7 +286,22 @@ export function QrScannerModal({ isOpen, onClose }: QrScannerModalProps) {
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
+        // Check BarcodeDetector first
+        if (typeof window !== "undefined" && "BarcodeDetector" in window) {
+          try {
+            const barcodeDetector = new (window as any).BarcodeDetector({
+              formats: ["qr_code"],
+            });
+            const barcodes = await barcodeDetector.detect(img);
+            if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+              handleDetectedData(barcodes[0].rawValue);
+              return;
+            }
+          } catch {}
+        }
+
+        // Canvas fallback
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
@@ -190,11 +309,17 @@ export function QrScannerModal({ isOpen, onClose }: QrScannerModalProps) {
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        const decodeFn = (jsQR as any).default || jsQR;
+        const code = decodeFn(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "attemptBoth",
+        });
+
         if (code && code.data) {
           handleDetectedData(code.data);
         } else {
-          setCameraError("Could not detect a QR code in the uploaded image. Please try another image or select your table.");
+          setCameraError(
+            "Could not detect a QR code in the uploaded image. Please try another image or select your table below."
+          );
         }
       };
       img.src = reader.result as string;
@@ -202,19 +327,21 @@ export function QrScannerModal({ isOpen, onClose }: QrScannerModalProps) {
     reader.readAsDataURL(file);
   };
 
-  // Toggle camera switch
+  // Switch camera front/back
   const toggleFacingMode = () => {
     setFacingMode((prev) => (prev === "environment" ? "user" : "environment"));
   };
 
-  // Manage camera on modal open/close
+  // Manage camera on modal open/close or tab switch
   useEffect(() => {
     if (isOpen && activeTab === "camera") {
       startCamera();
     } else {
       stopCamera();
     }
-    return () => stopCamera();
+    return () => {
+      stopCamera();
+    };
   }, [isOpen, activeTab, startCamera, stopCamera]);
 
   if (!isOpen) return null;
@@ -241,15 +368,15 @@ export function QrScannerModal({ isOpen, onClose }: QrScannerModalProps) {
           {/* Header */}
           <div className="px-6 py-4 bg-white border-b border-[#E6E1D5] flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full bg-[#1B382B] text-white flex items-center justify-center">
+              <div className="w-9 h-9 rounded-full bg-[#1B382B] text-white flex items-center justify-center shadow-xs">
                 <QrCode className="w-5 h-5 text-[#8EBA9D]" />
               </div>
               <div>
                 <h3 className="font-serif text-lg font-bold text-[#1B382B]">
-                  Scan Table QR Code
+                  Dine-In Table Scanner
                 </h3>
                 <p className="text-[11px] text-[#55635B]">
-                  Point at your table acrylic stand or pick your table
+                  Scan table stand QR or pick your table number
                 </p>
               </div>
             </div>
@@ -284,7 +411,7 @@ export function QrScannerModal({ isOpen, onClose }: QrScannerModalProps) {
               }`}
             >
               <Users className="w-3.5 h-3.5" />
-              <span>Table Selector</span>
+              <span>Select Table</span>
             </button>
             <button
               onClick={() => setActiveTab("demo")}
@@ -305,15 +432,13 @@ export function QrScannerModal({ isOpen, onClose }: QrScannerModalProps) {
             {activeTab === "camera" && (
               <div className="space-y-4">
                 <div className="relative aspect-square max-w-[320px] mx-auto rounded-3xl overflow-hidden bg-black shadow-inner border-2 border-[#1B382B]">
-                  {/* Hidden processing canvas */}
-                  <canvas ref={canvasRef} className="hidden" />
-
                   {/* Video Viewport */}
                   <video
                     ref={videoRef}
                     className="w-full h-full object-cover"
                     playsInline
                     muted
+                    autoPlay
                   />
 
                   {/* Overlay scanning viewfinder */}
@@ -336,20 +461,20 @@ export function QrScannerModal({ isOpen, onClose }: QrScannerModalProps) {
                     </div>
                   </div>
 
-                  {/* Success detection flash */}
+                  {/* Success detection overlay */}
                   {scannedResult && (
                     <div className="absolute inset-0 bg-[#1B382B]/90 backdrop-blur-sm flex flex-col items-center justify-center text-white p-4 text-center">
                       <CheckCircle2 className="w-12 h-12 text-[#8EBA9D] animate-bounce mb-2" />
                       <p className="font-serif font-bold text-lg">Table Recognized!</p>
-                      <p className="text-xs text-[#8EBA9D]">Opening menu...</p>
+                      <p className="text-xs text-[#8EBA9D]">Connecting table session...</p>
                     </div>
                   )}
 
-                  {/* Camera control buttons on viewfinder */}
+                  {/* Camera switch control */}
                   <div className="absolute bottom-3 right-3 flex gap-2">
                     <button
                       onClick={toggleFacingMode}
-                      className="p-2 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors backdrop-blur-sm"
+                      className="p-2.5 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors backdrop-blur-sm cursor-pointer shadow"
                       title="Switch Camera"
                     >
                       <RefreshCw className="w-4 h-4" />
@@ -365,15 +490,15 @@ export function QrScannerModal({ isOpen, onClose }: QrScannerModalProps) {
                       <p className="font-semibold">{cameraError}</p>
                       <button
                         onClick={() => setActiveTab("picker")}
-                        className="underline font-bold mt-1 text-[#1B382B] block"
+                        className="underline font-bold mt-1.5 text-[#1B382B] block cursor-pointer"
                       >
-                        Choose your table from list →
+                        Choose your table directly from the list →
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* Secondary upload action */}
+                {/* Photo upload action */}
                 <div className="flex items-center justify-between text-xs pt-1">
                   <span className="text-[#55635B]">Can&apos;t scan? Upload photo:</span>
                   <input
@@ -385,7 +510,7 @@ export function QrScannerModal({ isOpen, onClose }: QrScannerModalProps) {
                   />
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E6E1D5] bg-white text-[#151E19] hover:bg-[#F3EFE6] font-medium"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#E6E1D5] bg-white text-[#151E19] hover:bg-[#F3EFE6] font-medium cursor-pointer transition-colors"
                   >
                     <Upload className="w-3.5 h-3.5 text-[#4E7A63]" />
                     <span>Upload QR Image</span>
@@ -405,10 +530,18 @@ export function QrScannerModal({ isOpen, onClose }: QrScannerModalProps) {
                     <button
                       key={table.id}
                       onClick={() => {
+                        setTableSessionByToken(table.qrToken);
                         onClose();
-                        router.push(`/order/${table.qrToken}`);
+                        if (onSelectTable) {
+                          onSelectTable(table.qrToken);
+                        } else {
+                          const dest = pendingItemId
+                            ? `/order/${table.qrToken}?addItem=${encodeURIComponent(pendingItemId)}`
+                            : `/order/${table.qrToken}`;
+                          router.push(dest);
+                        }
                       }}
-                      className="p-3 rounded-2xl bg-white border border-[#E6E1D5] hover:border-[#1B382B] hover:shadow-md transition-all text-left flex flex-col justify-between group"
+                      className="p-3.5 rounded-2xl bg-white border border-[#E6E1D5] hover:border-[#1B382B] hover:shadow-md transition-all text-left flex flex-col justify-between group cursor-pointer"
                     >
                       <div className="flex items-start justify-between gap-1">
                         <span className="font-serif font-bold text-sm text-[#1B382B] group-hover:text-[#4E7A63]">
@@ -419,8 +552,8 @@ export function QrScannerModal({ isOpen, onClose }: QrScannerModalProps) {
                         </span>
                       </div>
                       <div className="flex items-center justify-between mt-3 text-[11px] text-[#4E7A63] font-semibold">
-                        <span>Tap to Order</span>
-                        <span>→</span>
+                        <span>Select This Table</span>
+                        <span className="group-hover:translate-x-1 transition-transform">→</span>
                       </div>
                     </button>
                   ))}
@@ -428,51 +561,71 @@ export function QrScannerModal({ isOpen, onClose }: QrScannerModalProps) {
               </div>
             )}
 
-            {/* TAB 3: QR STAND DEMO & PRINT PREVIEW */}
+            {/* TAB 3: QR STAND DEMO & REAL SCANNABLE CODES */}
             {activeTab === "demo" && (
               <div className="space-y-3">
                 <p className="text-xs text-[#55635B]">
-                  In the cafe, each table has an acrylic stand with a unique QR code. You can test by scanning these or print all sheets in the Admin console:
+                  In the cafe, each table has an acrylic stand with a unique QR code. You can test live by pointing your smartphone camera at these codes:
                 </p>
 
                 <div className="grid grid-cols-2 gap-3 max-h-[320px] overflow-y-auto pr-1">
-                  {CAFE_CONFIG.tables.slice(0, 4).map((table) => (
-                    <div
-                      key={table.id}
-                      className="p-3 rounded-2xl bg-white border border-[#E6E1D5] flex flex-col items-center text-center space-y-2"
-                    >
-                      <div className="w-24 h-24 bg-[#FBF9F4] rounded-xl flex items-center justify-center border border-[#E6E1D5] p-2">
-                        <QrCode className="w-16 h-16 text-[#1B382B]" />
-                      </div>
-                      <div>
-                        <span className="font-serif font-bold text-xs text-[#1B382B] block">
-                          {table.label}
-                        </span>
-                        <span className="text-[10px] text-[#55635B] block">
-                          Token: {table.qrToken.slice(0, 14)}...
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => {
-                          onClose();
-                          router.push(`/order/${table.qrToken}`);
-                        }}
-                        className="w-full py-1 text-[11px] font-semibold rounded-lg bg-[#1B382B] text-white hover:bg-[#12241C]"
+                  {CAFE_CONFIG.tables.map((table) => {
+                    const qrUrl = demoQrMap[table.id];
+                    return (
+                      <div
+                        key={table.id}
+                        className="p-3 rounded-2xl bg-white border border-[#E6E1D5] flex flex-col items-center text-center space-y-2 shadow-xs"
                       >
-                        Open Menu
-                      </button>
-                    </div>
-                  ))}
+                        <div className="w-28 h-28 bg-[#FBF9F4] rounded-xl flex items-center justify-center border border-[#E6E1D5] p-1.5">
+                          {qrUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={qrUrl}
+                              alt={`QR for ${table.label}`}
+                              className="w-full h-full object-contain rounded-lg"
+                            />
+                          ) : (
+                            <QrCode className="w-14 h-14 text-[#1B382B]" />
+                          )}
+                        </div>
+                        <div>
+                          <span className="font-serif font-bold text-xs text-[#1B382B] block">
+                            {table.label}
+                          </span>
+                          <span className="text-[10px] text-[#55635B] block font-mono">
+                            {table.capacity} Guests
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setTableSessionByToken(table.qrToken);
+                            onClose();
+                            if (onSelectTable) {
+                              onSelectTable(table.qrToken);
+                            } else {
+                              const dest = pendingItemId
+                                ? `/order/${table.qrToken}?addItem=${encodeURIComponent(pendingItemId)}`
+                                : `/order/${table.qrToken}`;
+                              router.push(dest);
+                            }
+                          }}
+                          className="w-full py-1.5 text-[11px] font-semibold rounded-xl bg-[#1B382B] text-white hover:bg-[#12241C] cursor-pointer transition-colors"
+                        >
+                          Open Menu
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 <div className="pt-2 border-t border-[#E6E1D5] flex items-center justify-between">
-                  <span className="text-xs text-[#55635B]">Looking for staff printouts?</span>
+                  <span className="text-xs text-[#55635B]">Staff printable stands?</span>
                   <button
                     onClick={() => {
                       onClose();
                       router.push("/admin");
                     }}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1B382B] hover:text-[#4E7A63] underline"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1B382B] hover:text-[#4E7A63] underline cursor-pointer"
                   >
                     <span>Admin QR Stand Sheets</span>
                     <ExternalLink className="w-3 h-3" />

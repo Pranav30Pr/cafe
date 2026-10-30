@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { CAFE_CONFIG, MenuItem } from "@/config/cafe";
 import { useCart } from "@/context/CartContext";
+import { setTableSessionByToken, setTakeawaySession } from "@/lib/session";
 import { CustomerHeader } from "@/components/customer/CustomerHeader";
 import { CategoryTabs } from "@/components/customer/CategoryTabs";
 import { ItemCard } from "@/components/customer/ItemCard";
@@ -16,6 +18,35 @@ interface CustomerAppViewProps {
   tableLabel?: string;
 }
 
+function AutoAddItemEffect() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { addItem, setCustomizingItem } = useCart();
+  const processedItemRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const addItemId = searchParams.get("addItem");
+    if (addItemId && processedItemRef.current !== addItemId) {
+      processedItemRef.current = addItemId;
+      const targetItem = CAFE_CONFIG.menuItems.find((i) => i.id === addItemId);
+      if (targetItem) {
+        if (targetItem.optionGroups && targetItem.optionGroups.length > 0) {
+          // Open customization sheet with options immediately
+          setCustomizingItem(targetItem);
+        } else {
+          // Directly add to cart
+          addItem(targetItem);
+        }
+      }
+      // Clean query parameter from URL without page reload
+      router.replace(pathname, { scroll: false });
+    }
+  }, [searchParams, pathname, router, addItem, setCustomizingItem]);
+
+  return null;
+}
+
 export function CustomerAppView({
   orderType,
   tableToken,
@@ -23,6 +54,15 @@ export function CustomerAppView({
 }: CustomerAppViewProps) {
   const [activeCategoryId, setActiveCategoryId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Keep client session synchronized
+  useEffect(() => {
+    if (orderType === "dine_in" && tableToken) {
+      setTableSessionByToken(tableToken);
+    } else if (orderType === "takeaway") {
+      setTakeawaySession();
+    }
+  }, [orderType, tableToken]);
 
   // Filter items based on active category and search query
   const filteredItems = CAFE_CONFIG.menuItems.filter((item) => {
@@ -37,6 +77,11 @@ export function CustomerAppView({
 
   return (
     <div className="min-h-screen bg-[#FBF9F4] flex flex-col pb-24">
+      {/* Auto add item handler with Suspense */}
+      <Suspense fallback={null}>
+        <AutoAddItemEffect />
+      </Suspense>
+
       {/* Header */}
       <CustomerHeader
         orderType={orderType}

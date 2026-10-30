@@ -1,14 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Menu, X, Sparkles, MapPin, Clock, QrCode } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Menu, X, Sparkles, MapPin, Clock, QrCode, UtensilsCrossed } from "lucide-react";
 import { CAFE_CONFIG } from "@/config/cafe";
 import { QrScannerModal } from "@/components/customer/QrScannerModal";
+import { getActiveSession, ActiveSession } from "@/lib/session";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
+
+  useEffect(() => {
+    setActiveSession(getActiveSession());
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 bg-[#FBF9F4]/90 backdrop-blur-md border-b border-[#E6E1D5] transition-all">
@@ -54,25 +60,55 @@ export function Navbar() {
 
         {/* Desktop Action CTAs */}
         <div className="hidden md:flex items-center gap-3">
-          <Link
-            href="/order/takeaway"
-            className="px-4 py-2 rounded-full border border-[#4E7A63] text-[#1B382B] text-xs font-semibold hover:bg-[#F3EFE6] transition-colors"
-          >
-            Takeaway
-          </Link>
-          <button
-            onClick={() => setScannerOpen(true)}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#1B382B] text-white text-xs font-semibold shadow hover:bg-[#12241C] transition-colors"
-          >
-            <QrCode className="w-3.5 h-3.5 text-[#8EBA9D]" />
-            <span>Scan Table QR</span>
-          </button>
+          {activeSession ? (
+            <Link
+              href={
+                activeSession.orderType === "dine_in"
+                  ? `/order/${activeSession.tableToken}`
+                  : "/order/takeaway"
+              }
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#1B382B] text-white text-xs font-semibold shadow hover:bg-[#12241C] transition-all"
+            >
+              <UtensilsCrossed className="w-3.5 h-3.5 text-[#8EBA9D]" />
+              <span>
+                {activeSession.orderType === "dine_in"
+                  ? activeSession.tableLabel || "My Table"
+                  : "Active Takeaway"}
+              </span>
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/order/takeaway"
+                className="px-4 py-2 rounded-full border border-[#4E7A63] text-[#1B382B] text-xs font-semibold hover:bg-[#F3EFE6] transition-colors"
+              >
+                Takeaway
+              </Link>
+              <button
+                onClick={() => setScannerOpen(true)}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#1B382B] text-white text-xs font-semibold shadow hover:bg-[#12241C] transition-colors cursor-pointer"
+              >
+                <QrCode className="w-3.5 h-3.5 text-[#8EBA9D]" />
+                <span>Scan Table QR</span>
+              </button>
+            </>
+          )}
+
+          {activeSession && (
+            <button
+              onClick={() => setScannerOpen(true)}
+              className="p-2 rounded-full border border-[#E6E1D5] hover:bg-[#F3EFE6] text-[#1B382B] transition-colors cursor-pointer"
+              title="Scan different QR"
+            >
+              <QrCode className="w-4 h-4 text-[#4E7A63]" />
+            </button>
+          )}
         </div>
 
         {/* Mobile Hamburger Button */}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden p-2 rounded-xl text-[#1B382B] hover:bg-[#F3EFE6] transition-colors"
+          className="md:hidden p-2 rounded-xl text-[#1B382B] hover:bg-[#F3EFE6] transition-colors cursor-pointer"
           aria-label="Toggle navigation menu"
         >
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -114,23 +150,43 @@ export function Navbar() {
           </div>
 
           <div className="pt-4 border-t border-[#E6E1D5] flex flex-col gap-2.5">
+            {activeSession ? (
+              <Link
+                href={
+                  activeSession.orderType === "dine_in"
+                    ? `/order/${activeSession.tableToken}`
+                    : "/order/takeaway"
+                }
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full text-center py-3 rounded-xl bg-[#1B382B] text-white font-medium text-sm shadow flex items-center justify-center gap-2"
+              >
+                <UtensilsCrossed className="w-4 h-4 text-[#8EBA9D]" />
+                <span>
+                  Return to {activeSession.orderType === "dine_in" ? activeSession.tableLabel : "Takeaway Tray"}
+                </span>
+              </Link>
+            ) : (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setScannerOpen(true);
+                }}
+                className="w-full text-center py-3 rounded-xl bg-[#1B382B] text-white font-medium text-sm shadow flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <QrCode className="w-4 h-4 text-[#8EBA9D]" />
+                <span>Scan Table QR Code</span>
+              </button>
+            )}
+
             <button
               onClick={() => {
                 setMobileMenuOpen(false);
                 setScannerOpen(true);
               }}
-              className="w-full text-center py-3 rounded-xl bg-[#1B382B] text-white font-medium text-sm shadow flex items-center justify-center gap-2"
+              className="w-full text-center py-2.5 rounded-xl border border-[#4E7A63] text-[#1B382B] font-medium text-sm cursor-pointer"
             >
-              <QrCode className="w-4 h-4 text-[#8EBA9D]" />
-              <span>Scan Table QR Code</span>
+              {activeSession ? "Change Table or Scan QR" : "Select Table from List"}
             </button>
-            <Link
-              href="/order/takeaway"
-              onClick={() => setMobileMenuOpen(false)}
-              className="w-full text-center py-2.5 rounded-xl border border-[#4E7A63] text-[#1B382B] font-medium text-sm"
-            >
-              Counter Takeaway Pickup
-            </Link>
           </div>
         </div>
       )}

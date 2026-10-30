@@ -1,14 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, QrCode, ShoppingBag, Coffee, Sparkles } from "lucide-react";
+import { ArrowRight, QrCode, ShoppingBag, Coffee, UtensilsCrossed } from "lucide-react";
 import { CAFE_CONFIG } from "@/config/cafe";
 import { QrScannerModal } from "@/components/customer/QrScannerModal";
+import { getActiveSession, ActiveSession } from "@/lib/session";
 
 export function Hero() {
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
+
+  useEffect(() => {
+    setActiveSession(getActiveSession());
+  }, []);
 
   return (
     <section className="relative overflow-hidden pt-8 pb-16 sm:py-20 lg:py-24">
@@ -38,14 +44,25 @@ export function Hero() {
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 sm:gap-4 pt-2">
-              <button
-                onClick={() => setScannerOpen(true)}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-full bg-[#1B382B] text-white font-medium text-sm sm:text-base hover:bg-[#12241C] shadow-md hover:shadow-lg transition-all group"
-              >
-                <QrCode className="w-4 h-4 text-[#8EBA9D]" />
-                <span>Scan Table QR Code</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
+              {activeSession && activeSession.orderType === "dine_in" ? (
+                <Link
+                  href={`/order/${activeSession.tableToken}`}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-full bg-[#1B382B] text-white font-medium text-sm sm:text-base hover:bg-[#12241C] shadow-md hover:shadow-lg transition-all group"
+                >
+                  <UtensilsCrossed className="w-4 h-4 text-[#8EBA9D]" />
+                  <span>Resume Order ({activeSession.tableLabel})</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              ) : (
+                <button
+                  onClick={() => setScannerOpen(true)}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-full bg-[#1B382B] text-white font-medium text-sm sm:text-base hover:bg-[#12241C] shadow-md hover:shadow-lg transition-all group cursor-pointer"
+                >
+                  <QrCode className="w-4 h-4 text-[#8EBA9D]" />
+                  <span>Scan Table QR Code</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+              )}
 
               <Link
                 href="/order/takeaway"
